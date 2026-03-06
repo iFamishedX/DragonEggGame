@@ -2,6 +2,7 @@ package dev.dragonslegacy.egg;
 
 import dev.dragonslegacy.DragonsLegacyMod;
 import dev.dragonslegacy.ability.AbilityEngine;
+import dev.dragonslegacy.announce.AnnouncementManager;
 import dev.dragonslegacy.egg.event.DragonEggEventBus;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +29,7 @@ public class DragonsLegacy {
     private final EggProtectionManager   eggProtectionManager;
     private final EggOfflineResetManager eggOfflineResetManager;
     private final AbilityEngine          abilityEngine;
+    private final AnnouncementManager    announcementManager;
 
     // ------------------------------------------------------------------
     // Construction (private – use getInstance() after init())
@@ -43,6 +45,7 @@ public class DragonsLegacy {
         this.eggProtectionManager = new EggProtectionManager(eggSpawnFallback);
         this.eggOfflineResetManager = new EggOfflineResetManager(persistentState);
         this.abilityEngine        = new AbilityEngine();
+        this.announcementManager  = new AnnouncementManager();
     }
 
     // ------------------------------------------------------------------
@@ -71,6 +74,7 @@ public class DragonsLegacy {
 
         INSTANCE = legacy;
         legacy.abilityEngine.init(server);
+        legacy.announcementManager.init(server, legacy.eventBus);
         DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Subsystem initialised.");
     }
 
@@ -109,4 +113,5 @@ public class DragonsLegacy {
     public EggProtectionManager   getEggProtectionManager()   { return eggProtectionManager; }
     public EggOfflineResetManager getEggOfflineResetManager() { return eggOfflineResetManager; }
     public AbilityEngine          getAbilityEngine()          { return abilityEngine; }
+    public AnnouncementManager    getAnnouncementManager()    { return announcementManager; }
 }

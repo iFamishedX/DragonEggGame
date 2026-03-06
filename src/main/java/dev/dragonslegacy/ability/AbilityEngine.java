@@ -2,6 +2,8 @@ package dev.dragonslegacy.ability;
 
 import dev.dragonslegacy.DragonsLegacyMod;
 import dev.dragonslegacy.ability.event.AbilityActivatedEvent;
+import dev.dragonslegacy.ability.event.AbilityCooldownEndedEvent;
+import dev.dragonslegacy.ability.event.AbilityCooldownStartedEvent;
 import dev.dragonslegacy.ability.event.AbilityDeactivatedEvent;
 import dev.dragonslegacy.ability.event.AbilityExpiredEvent;
 import dev.dragonslegacy.egg.DragonsLegacy;
@@ -60,6 +62,7 @@ public class AbilityEngine {
         } else if (state == AbilityState.COOLDOWN && timers.isCooldownFinished()) {
             state = AbilityState.INACTIVE;
             DragonsLegacyMod.LOGGER.debug("[Dragon's Legacy] Dragon's Hunger cooldown finished.");
+            publishEvent(new AbilityCooldownEndedEvent());
         }
     }
 
@@ -124,6 +127,7 @@ public class AbilityEngine {
         );
 
         publishEvent(new AbilityDeactivatedEvent(player.getUUID(), reason));
+        publishEvent(new AbilityCooldownStartedEvent(AbilityTimers.DEFAULT_COOLDOWN));
         activePlayerUUID = null;
     }
 
@@ -190,6 +194,7 @@ public class AbilityEngine {
         if (expiredFor != null) {
             publishEvent(new AbilityExpiredEvent(expiredFor));
         }
+        publishEvent(new AbilityCooldownStartedEvent(AbilityTimers.DEFAULT_COOLDOWN));
     }
 
     /**
