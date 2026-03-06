@@ -1,5 +1,6 @@
 package dev.dragonslegacy;
 
+import dev.dragonslegacy.command.DragonsLegacyCommands;
 import dev.dragonslegacy.config.Config;
 import dev.dragonslegacy.features.Actions;
 import dev.dragonslegacy.egg.event.EggEventHandler;
@@ -46,6 +47,7 @@ public class DragonsLegacyMod implements ModInitializer {
         LootConditions.register();
         CONFIG = Config.loadAndUpdateOrCreate();
         Commands.register();
+        DragonsLegacyCommands.register();
         Events.register();
 
         Actions.init();
