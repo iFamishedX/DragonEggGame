@@ -50,8 +50,9 @@ public class EggPersistentState extends SavedData {
     public static final SavedDataType<EggPersistentState> TYPE =
         new SavedDataType<EggPersistentState>(
             "dragons_legacy_egg",
-            ctx -> new EggPersistentState(),
-            ctx -> CODEC
+            EggPersistentState::new,
+            CODEC,
+            null  // DataFixTypes – mods don't use Mojang's data fixer system
         );
 
     private static EggPersistentState decode(
