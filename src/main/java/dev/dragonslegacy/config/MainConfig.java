@@ -1,0 +1,47 @@
+package dev.dragonslegacy.config;
+
+import dev.dragonslegacy.api.DragonEggAPI.PositionType;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import org.spongepowered.configurate.objectmapping.meta.Comment;
+
+import java.util.Map;
+
+@ConfigSerializable
+public class MainConfig {
+
+    public static final Map<PositionType, VisibilityType> DEFAULT_VISIBILITY = Map.of(
+        PositionType.BLOCK,         VisibilityType.RANDOMIZED,
+        PositionType.ITEM,          VisibilityType.EXACT,
+        PositionType.FALLING_BLOCK, VisibilityType.EXACT,
+        PositionType.INVENTORY,     VisibilityType.EXACT,
+        PositionType.ENTITY,        VisibilityType.EXACT,
+        PositionType.PLAYER,        VisibilityType.HIDDEN
+    );
+
+    @Comment("Radius (blocks) used to randomise the dragon egg position display. Default: 25")
+    public float searchRadius = 25f;
+
+    @Comment("Prevent the Dragon Egg from entering an Ender Chest. Default: true")
+    public boolean blockEnderChest = true;
+
+    @Comment("Prevent the Dragon Egg from entering any portable container item (Shulker Box, Bundle). Default: false")
+    public boolean blockContainerItems = false;
+
+    @Comment("Distance in blocks around the Dragon Egg where players count as 'nearby'. Default: 64")
+    public int nearbyRange = 64;
+
+    @Comment("Real-world days a bearer may be offline before the egg bearer designation is cleared. Default: 3.0")
+    public double offlineResetDays = 3.0;
+
+    @Comment("""
+        Visibility of the dragon egg for each position type.
+        RANDOMIZED = randomized position shown, EXACT = exact position shown, HIDDEN = position hidden.
+        """)
+    public Map<PositionType, VisibilityType> visibility = DEFAULT_VISIBILITY;
+
+    public VisibilityType getVisibility(@Nullable PositionType type) {
+        if (visibility == null) return DEFAULT_VISIBILITY.getOrDefault(type, VisibilityType.HIDDEN);
+        return visibility.getOrDefault(type, DEFAULT_VISIBILITY.getOrDefault(type, VisibilityType.HIDDEN));
+    }
+}

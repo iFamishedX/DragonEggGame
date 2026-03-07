@@ -14,8 +14,6 @@ import net.minecraft.util.RandomSource;
 import java.util.Optional;
 import java.util.UUID;
 
-import static dev.dragonslegacy.DragonsLegacyMod.CONFIG;
-
 public class MCIntegration {
     private static UUID BEARER;
 
@@ -35,7 +33,7 @@ public class MCIntegration {
             ServerPlayer player = server.getPlayerList().getPlayer(newBearer);
             if (player == null) return;
             server.getPlayerList().broadcastSystemMessage(
-                CONFIG.messages.bearerChanged.node.toText(
+                DragonsLegacyMod.configManager.getCommands().messages.bearerChanged.node.toText(
                     PlaceholderContext.of(player
                         .createCommandSourceStack()
                         .withMaximumPermission(LevelBasedPermissionSet.OWNER))

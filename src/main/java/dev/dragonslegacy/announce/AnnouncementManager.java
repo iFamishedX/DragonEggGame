@@ -5,12 +5,17 @@ import dev.dragonslegacy.ability.event.AbilityActivatedEvent;
 import dev.dragonslegacy.ability.event.AbilityCooldownEndedEvent;
 import dev.dragonslegacy.ability.event.AbilityCooldownStartedEvent;
 import dev.dragonslegacy.ability.event.AbilityExpiredEvent;
+import dev.dragonslegacy.config.AnnouncementsConfig;
 import dev.dragonslegacy.egg.event.DragonEggEventBus;
 import dev.dragonslegacy.egg.event.EggBearerChangedEvent;
 import dev.dragonslegacy.egg.event.EggDroppedEvent;
 import dev.dragonslegacy.egg.event.EggPickedUpEvent;
 import dev.dragonslegacy.egg.event.EggPlacedEvent;
 import dev.dragonslegacy.egg.event.EggTeleportedToSpawnEvent;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,8 +29,8 @@ import java.util.UUID;
  * Central controller for all Dragon's Legacy server-wide announcements.
  *
  * <p>Subscribe to all relevant events on the {@link DragonEggEventBus}, format
- * announcement templates using {@link AnnouncementFormatter}, and broadcast the
- * result to every online player via
+ * announcement templates using MiniMessage, and broadcast the result to every
+ * online player via
  * {@link net.minecraft.server.players.PlayerList#broadcastSystemMessage}.
  *
  * <h3>Lifecycle</h3>
@@ -34,22 +39,24 @@ import java.util.UUID;
  *       server and {@link dev.dragonslegacy.egg.DragonsLegacy} have been initialised.</li>
  * </ol>
  *
- * <h3>Phase 5 migration note</h3>
- * Templates are currently hardcoded in {@link AnnouncementTemplates}.  In Phase 5
- * the templates field can be replaced with a YAML-backed implementation without
- * changing any subscriber logic here.
+ * <h3>Templates</h3>
+ * Templates are loaded from {@link AnnouncementsConfig} and use MiniMessage format.
+ * Dynamic placeholders use MiniMessage tag syntax (e.g. {@code <player>}).
  */
 public class AnnouncementManager {
 
     /** Ticks per second in vanilla Minecraft. Used to convert tick durations to seconds. */
     private static final int TICKS_PER_SECOND = 20;
 
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacySection();
+
     private @Nullable MinecraftServer server;
 
     /**
-     * Runtime announcement templates, populated from {@link dev.dragonslegacy.config.ConfigManager}
-     * after config is loaded.  Falls back to the hardcoded {@link AnnouncementTemplates} constants
-     * when a key is absent.
+     * Runtime announcement templates, populated from {@link AnnouncementsConfig}
+     * after config is loaded.  Falls back to the MiniMessage defaults in
+     * {@link AnnouncementsConfig#defaultTemplates()} when a key is absent.
      */
     private Map<String, String> templates = new HashMap<>();
 
@@ -132,11 +139,11 @@ public class AnnouncementManager {
     private void onEggPickedUp(EggPickedUpEvent event) {
         Map<String, String> ph = new HashMap<>();
         ph.put("player", event.getPlayer().getGameProfile().name());
-        broadcast(format(getTemplate("egg_picked_up", AnnouncementTemplates.EGG_PICKED_UP), ph));
+        broadcastMiniMessage(getTemplate("egg_picked_up"), ph);
     }
 
     private void onEggDropped(EggDroppedEvent event) {
-        broadcast(getTemplate("egg_dropped", AnnouncementTemplates.EGG_DROPPED));
+        broadcastMiniMessage(getTemplate("egg_dropped"), Map.of());
     }
 
     private void onEggPlaced(EggPlacedEvent event) {
@@ -144,17 +151,17 @@ public class AnnouncementManager {
         ph.put("x", String.valueOf(event.getPosition().getX()));
         ph.put("y", String.valueOf(event.getPosition().getY()));
         ph.put("z", String.valueOf(event.getPosition().getZ()));
-        broadcast(format(getTemplate("egg_placed", AnnouncementTemplates.EGG_PLACED), ph));
+        broadcastMiniMessage(getTemplate("egg_placed"), ph);
     }
 
     private void onBearerChanged(EggBearerChangedEvent event) {
         UUID newBearer = event.getNewBearerUUID();
         if (newBearer == null) {
-            broadcast(getTemplate("bearer_cleared", AnnouncementTemplates.BEARER_CLEARED));
+            broadcastMiniMessage(getTemplate("bearer_cleared"), Map.of());
         } else {
             Map<String, String> ph = new HashMap<>();
             ph.put("player", resolvePlayerName(newBearer));
-            broadcast(format(getTemplate("bearer_changed", AnnouncementTemplates.BEARER_CHANGED), ph));
+            broadcastMiniMessage(getTemplate("bearer_changed"), ph);
         }
     }
 
@@ -163,7 +170,7 @@ public class AnnouncementManager {
         ph.put("x", String.valueOf((int) event.getSpawnPosition().x));
         ph.put("y", String.valueOf((int) event.getSpawnPosition().y));
         ph.put("z", String.valueOf((int) event.getSpawnPosition().z));
-        broadcast(format(getTemplate("egg_teleported_to_spawn", AnnouncementTemplates.EGG_TELEPORTED_TO_SPAWN), ph));
+        broadcastMiniMessage(getTemplate("egg_teleported_to_spawn"), ph);
     }
 
     // -------------------------------------------------------------------------
@@ -174,23 +181,23 @@ public class AnnouncementManager {
         Map<String, String> ph = new HashMap<>();
         ph.put("player", resolvePlayerName(event.getPlayerUUID()));
         ph.put("seconds", String.valueOf(event.getDuration() / TICKS_PER_SECOND));
-        broadcast(format(getTemplate("ability_activated", AnnouncementTemplates.ABILITY_ACTIVATED), ph));
+        broadcastMiniMessage(getTemplate("ability_activated"), ph);
     }
 
     private void onAbilityExpired(AbilityExpiredEvent event) {
         Map<String, String> ph = new HashMap<>();
         ph.put("player", resolvePlayerName(event.getPlayerUUID()));
-        broadcast(format(getTemplate("ability_expired", AnnouncementTemplates.ABILITY_EXPIRED), ph));
+        broadcastMiniMessage(getTemplate("ability_expired"), ph);
     }
 
     private void onCooldownStarted(AbilityCooldownStartedEvent event) {
         Map<String, String> ph = new HashMap<>();
         ph.put("seconds", String.valueOf(event.getCooldownTicks() / TICKS_PER_SECOND));
-        broadcast(format(getTemplate("ability_cooldown_started", AnnouncementTemplates.ABILITY_COOLDOWN_STARTED), ph));
+        broadcastMiniMessage(getTemplate("ability_cooldown_started"), ph);
     }
 
     private void onCooldownEnded(AbilityCooldownEndedEvent event) {
-        broadcast(getTemplate("ability_cooldown_ended", AnnouncementTemplates.ABILITY_COOLDOWN_ENDED));
+        broadcastMiniMessage(getTemplate("ability_cooldown_ended"), Map.of());
     }
 
     // -------------------------------------------------------------------------
@@ -198,12 +205,33 @@ public class AnnouncementManager {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the template for {@code key} from the runtime map, or
-     * {@code fallback} (the hardcoded constant) if absent.
+     * Returns the template for {@code key} from the runtime map, or the
+     * MiniMessage default from {@link AnnouncementsConfig#defaultTemplates()} if absent.
      */
-    private String getTemplate(String key, String fallback) {
+    private String getTemplate(String key) {
         String value = templates.get(key);
-        return value != null ? value : fallback;
+        return value != null ? value : AnnouncementsConfig.defaultTemplates().getOrDefault(key, "");
+    }
+
+    /**
+     * Parses {@code template} as MiniMessage, resolves {@code placeholders} as
+     * unparsed tags (e.g. {@code <player>}), converts the result to a Minecraft
+     * {@link Component} via legacy § codes, and broadcasts it to every online player.
+     *
+     * @param template     MiniMessage template, e.g. {@code "<gold>[Dragon's Legacy]</gold> <player> joined!"}
+     * @param placeholders map of placeholder keys to plain-text values
+     */
+    private void broadcastMiniMessage(String template, Map<String, String> placeholders) {
+        if (server == null) return;
+        TagResolver.Builder resolverBuilder = TagResolver.builder();
+        for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+            resolverBuilder.resolver(Placeholder.unparsed(entry.getKey(), entry.getValue()));
+        }
+        net.kyori.adventure.text.Component adventureComponent =
+            MINI_MESSAGE.deserialize(template, resolverBuilder.build());
+        String legacyText = LEGACY_SERIALIZER.serialize(adventureComponent);
+        Component mcComponent = Component.literal(legacyText);
+        server.getPlayerList().broadcastSystemMessage(mcComponent, false);
     }
 
     /**

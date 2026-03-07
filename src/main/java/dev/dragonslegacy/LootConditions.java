@@ -13,7 +13,6 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.level.storage.loot.predicates.LootItemConditionType;
 
-import static dev.dragonslegacy.DragonsLegacyMod.CONFIG;
 import static dev.dragonslegacy.DragonsLegacyMod.MOD_ID;
 
 public class LootConditions {
@@ -61,7 +60,7 @@ public class LootConditions {
             Entity entity = context.getOptionalParameter(LootContextParams.THIS_ENTITY);
             Data data = DragonEggAPI.getData();
             if (entity != null && data != null && data.world != null)
-                return entity.position().closerThan(data.getPosition(), CONFIG.nearbyRange);
+                return entity.position().closerThan(data.getPosition(), DragonsLegacyMod.configManager.getMain().nearbyRange);
             return false;
         }
     }

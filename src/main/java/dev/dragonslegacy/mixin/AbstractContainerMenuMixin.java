@@ -32,7 +32,7 @@ public abstract class AbstractContainerMenuMixin {
         if (i < 0) return;
 
         var isEnderChestMenu = slots.stream().anyMatch(s -> s.container instanceof PlayerEnderChestContainer);
-        if (isEnderChestMenu && DragonsLegacyMod.CONFIG.blockEnderChest && checkDragonEgg(i, j, clickType, player))
+        if (isEnderChestMenu && DragonsLegacyMod.configManager.getMain().blockEnderChest && checkDragonEgg(i, j, clickType, player))
             ci.cancel();
     }
 
@@ -55,9 +55,9 @@ public abstract class AbstractContainerMenuMixin {
         //     var slotIsBundle = slot.hasItem() && slot.getItem().getItem() instanceof BundleItem;
         //
         //     if (j == 0) { // 0 = left click, 1 = right click
-        //         if (carriedIsBundle && slot.hasItem() && DragonsLegacyMod.CONFIG.blockContainerItems)
+        //         if (carriedIsBundle && slot.hasItem() && DragonsLegacyMod.configManager.getMain().blockContainerItems)
         //             stack = slot.getItem();
-        //         else if (!isPlayerSlot || slotIsBundle && DragonsLegacyMod.CONFIG.blockContainerItems)
+        //         else if (!isPlayerSlot || slotIsBundle && DragonsLegacyMod.configManager.getMain().blockContainerItems)
         //             stack = getCarried();
         //         else return false;
         //     } else {

@@ -1,8 +1,8 @@
 package dev.dragonslegacy.api;
 
 import dev.dragonslegacy.Events;
-import dev.dragonslegacy.config.Config;
 import dev.dragonslegacy.config.Data;
+import dev.dragonslegacy.config.VisibilityType;
 import dev.dragonslegacy.utils.ScheduledEvent;
 import dev.dragonslegacy.utils.Utils;
 import net.minecraft.core.BlockPos;
@@ -148,7 +148,7 @@ public class DragonEggAPI {
         Level oldWorld = data.world != null ? data.world : world;
         if (
             !oldWorld.equals(world) ||
-            !pos.closerThan(data.getRandomizedPosition().getCenter(), CONFIG.searchRadius)
+            !pos.closerThan(data.getRandomizedPosition().getCenter(), DragonsLegacyMod.configManager.getMain().searchRadius)
         ) {
             data.clearRandomizedPosition();
         }
@@ -163,7 +163,7 @@ public class DragonEggAPI {
     }
 
     private static synchronized void trackEntity(Entity entity) {
-        if (CONFIG.getVisibility(getPositionType(entity)) == Config.VisibilityType.EXACT) entity.setGlowingTag(true);
+        if (DragonsLegacyMod.configManager.getMain().getVisibility(getPositionType(entity)) == VisibilityType.EXACT) entity.setGlowingTag(true);
         Events.SCHEDULED_ACTIONS.put(
             entity.getUUID(), new ScheduledEvent(
                 100,

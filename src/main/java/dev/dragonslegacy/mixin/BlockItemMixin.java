@@ -16,7 +16,7 @@ public abstract class BlockItemMixin {
 
     @ModifyReturnValue(method = "canFitInsideContainerItems", at = @At("RETURN"))
     private boolean blockDragonEggInsertion(boolean original) {
-        if (!DragonsLegacyMod.CONFIG.blockContainerItems) return original;
+        if (!DragonsLegacyMod.configManager.getMain().blockContainerItems) return original;
         return original && getBlock() != Blocks.DRAGON_EGG;
     }
 }

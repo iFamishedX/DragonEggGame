@@ -1,6 +1,7 @@
 package dev.dragonslegacy.config;
 
 import dev.dragonslegacy.DragonsLegacyMod;
+import eu.pb4.placeholders.api.parsers.NodeParser;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.objectmapping.ObjectMapper;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
@@ -8,184 +9,132 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
- * Manages the Dragon's Legacy YAML configuration file at
- * {@code config/dragonslegacy/config.yml}.
+ * Loads, saves, and reloads all five Dragon's Legacy YAML configuration files
+ * under {@code config/dragonslegacy/}.
  *
- * <h3>Lifecycle</h3>
- * <ol>
- *   <li>Instantiate once inside {@link dev.dragonslegacy.egg.DragonsLegacy#init}.</li>
- *   <li>Call {@link #init()} to load (or create) the config file.</li>
- *   <li>Call {@link #reload()} at any time (e.g. from {@code /dragonslegacy reload})
- *       to re-read the file and return a fresh {@link ConfigData}.</li>
- * </ol>
- *
- * <p>Missing or malformed fields fall back to the defaults defined in
- * {@link ConfigData} so the server never crashes due to a bad config.
+ * <h3>Files managed</h3>
+ * <ul>
+ *   <li>{@code main.yaml}          – core egg settings</li>
+ *   <li>{@code ability.yaml}       – Dragon's Hunger ability timers</li>
+ *   <li>{@code announcements.yaml} – broadcast message templates (MiniMessage)</li>
+ *   <li>{@code spawn.yaml}         – spawn-fallback &amp; BlueMap marker settings</li>
+ *   <li>{@code commands.yaml}      – /dragon_egg messages and action triggers</li>
+ * </ul>
  */
 public class ConfigManager {
 
-    private static final String FILE_NAME = "config.yml";
-
-    private final Path configPath;
-    private ConfigData data = new ConfigData();
-
-    public ConfigManager() {
-        this.configPath = DragonsLegacyMod.CONFIG_DIR.resolve(FILE_NAME);
-    }
+    private MainConfig          main          = new MainConfig();
+    private AbilityConfig       ability       = new AbilityConfig();
+    private AnnouncementsConfig announcements = new AnnouncementsConfig();
+    private SpawnConfig         spawn         = new SpawnConfig();
+    private CommandsConfig      commands      = new CommandsConfig();
 
     // -------------------------------------------------------------------------
     // Lifecycle
     // -------------------------------------------------------------------------
 
     /**
-     * Ensures the config directory and file exist, then loads the config.
-     * If the file is absent a default one is written to disk.
+     * Ensures the config directory exists and loads all files (writing defaults if absent).
      */
     public void init() {
         try {
-            Files.createDirectories(configPath.getParent());
+            Files.createDirectories(DragonsLegacyMod.CONFIG_DIR);
         } catch (IOException e) {
             DragonsLegacyMod.LOGGER.warn("[Dragon's Legacy] Could not create config directory.", e);
         }
-
-        if (!configPath.toFile().isFile()) {
-            data = new ConfigData();
-            save();
-            DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Created default config.yml at {}.", configPath);
-            return;
-        }
-
-        reload();
+        main          = loadOrCreate("main.yaml",          MainConfig.class,          new MainConfig());
+        ability       = loadOrCreate("ability.yaml",       AbilityConfig.class,       new AbilityConfig());
+        announcements = loadOrCreate("announcements.yaml", AnnouncementsConfig.class, new AnnouncementsConfig());
+        spawn         = loadOrCreate("spawn.yaml",         SpawnConfig.class,         new SpawnConfig());
+        commands      = loadOrCreate("commands.yaml",      CommandsConfig.class,      new CommandsConfig());
     }
 
     /**
-     * Re-reads {@code config.yml} from disk and returns the loaded data.
-     * Falls back to the previous (or default) values on failure.
+     * Re-reads all five YAML files from disk.
      */
-    public ConfigData reload() {
-        YamlConfigurationLoader loader = buildLoader();
-        try {
-            CommentedConfigurationNode node = loader.load();
-            ConfigData loaded = node.get(ConfigData.class);
-            if (loaded == null) {
-                DragonsLegacyMod.LOGGER.warn(
-                    "[Dragon's Legacy] config.yml appears empty or unreadable – using defaults.");
-                data = new ConfigData();
-            } else {
-                mergeDefaults(loaded);
-                data = loaded;
-            }
-            DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] config.yml loaded successfully.");
-        } catch (Exception e) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] Failed to load config.yml – keeping previous values.", e);
-        }
-        return data;
+    public void reload() {
+        main          = reload("main.yaml",          MainConfig.class,          main);
+        ability       = reload("ability.yaml",       AbilityConfig.class,       ability);
+        announcements = reload("announcements.yaml", AnnouncementsConfig.class, announcements);
+        spawn         = reload("spawn.yaml",         SpawnConfig.class,         spawn);
+        commands      = reload("commands.yaml",      CommandsConfig.class,      commands);
+        DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] All configuration files reloaded.");
     }
 
     // -------------------------------------------------------------------------
-    // Getters
+    // Config getters
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the announcement template for {@code key} (e.g. {@code "egg_picked_up"}).
-     * Falls back to the hardcoded default if the key is absent.
-     */
-    public String getAnnouncementTemplate(String key) {
-        if (data.announcements != null) {
-            String value = data.announcements.get(key);
-            if (value != null) return value;
-        }
-        // Fall back to built-in defaults
-        return ConfigData.defaultAnnouncements().getOrDefault(key, "");
-    }
-
-    /** Returns the configured Dragon's Hunger duration in ticks. */
-    public int getAbilityDurationTicks() {
-        return data.abilityDurationTicks;
-    }
-
-    /** Returns the configured Dragon's Hunger cooldown in ticks. */
-    public int getAbilityCooldownTicks() {
-        return data.abilityCooldownTicks;
-    }
-
-    /** Returns the number of real-world days before an offline bearer is cleared. */
-    public double getOfflineResetDays() {
-        return data.offlineResetDays;
-    }
-
-    /** Returns {@code true} if the egg spawn-fallback behaviour is enabled. */
-    public boolean getSpawnFallbackEnabled() {
-        return data.spawnFallbackEnabled;
-    }
-
-    /** Returns the full announcement templates map (never {@code null}). */
-    public Map<String, String> getAnnouncementTemplates() {
-        return data.announcements != null ? data.announcements : ConfigData.defaultAnnouncements();
-    }
+    public MainConfig          getMain()          { return main; }
+    public AbilityConfig       getAbility()       { return ability; }
+    public AnnouncementsConfig getAnnouncements() { return announcements; }
+    public SpawnConfig         getSpawn()         { return spawn; }
+    public CommandsConfig      getCommands()      { return commands; }
 
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
 
-    private void save() {
-        YamlConfigurationLoader loader = buildLoader();
+    private <T> T loadOrCreate(String fileName, Class<T> type, T defaults) {
+        Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
+        if (!path.toFile().isFile()) {
+            save(fileName, type, defaults);
+            DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Created default {} at {}.", fileName, path);
+            return defaults;
+        }
+        return reload(fileName, type, defaults);
+    }
+
+    private <T> T reload(String fileName, Class<T> type, T previous) {
+        Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
+        YamlConfigurationLoader loader = buildLoader(path, type);
+        try {
+            CommentedConfigurationNode node = loader.load();
+            T loaded = node.get(type);
+            if (loaded == null) {
+                DragonsLegacyMod.LOGGER.warn(
+                    "[Dragon's Legacy] {} appears empty – using defaults.", fileName);
+                return previous;
+            }
+            DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] {} loaded.", fileName);
+            return loaded;
+        } catch (Exception e) {
+            DragonsLegacyMod.LOGGER.warn(
+                "[Dragon's Legacy] Failed to load {} – keeping previous values.", fileName, e);
+            return previous;
+        }
+    }
+
+    private <T> void save(String fileName, Class<T> type, T value) {
+        Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
+        YamlConfigurationLoader loader = buildLoader(path, type);
         try {
             CommentedConfigurationNode node = loader.createNode();
-            node.set(ConfigData.class, data);
+            node.set(type, value);
             loader.save(node);
         } catch (Exception e) {
-            DragonsLegacyMod.LOGGER.warn("[Dragon's Legacy] Failed to save config.yml.", e);
+            DragonsLegacyMod.LOGGER.warn("[Dragon's Legacy] Failed to save {}.", fileName, e);
         }
     }
 
-    private YamlConfigurationLoader buildLoader() {
+    private static <T> YamlConfigurationLoader buildLoader(Path path, Class<T> type) {
         return YamlConfigurationLoader.builder()
-            .path(configPath)
-            .defaultOptions(opts -> opts.serializers(build ->
-                build.registerAnnotatedObjects(ObjectMapper.factory())
-            ))
+            .path(path)
+            .defaultOptions(opts -> opts.serializers(build -> {
+                build.registerAnnotatedObjects(ObjectMapper.factory());
+                build.register(MessageString.class, new MessageString.Serializer(
+                    NodeParser.builder()
+                        .globalPlaceholders()
+                        .quickText()
+                        .staticPreParsing()
+                        .build()
+                ));
+                build.register(Action.class, Action.Serializer.INSTANCE);
+                build.register(CommandTemplate.class, CommandTemplate.Serializer.INSTANCE);
+                build.register(Condition.class, Condition.Serializer.INSTANCE);
+            }))
             .build();
-    }
-
-    /**
-     * Fills in any fields that were absent or invalid in {@code loaded} with
-     * their defaults, so the caller never has to null-check every field.
-     */
-    private static void mergeDefaults(ConfigData loaded) {
-        ConfigData defaults = new ConfigData();
-
-        // Merge announcement templates – keep any user-defined key and add missing ones
-        if (loaded.announcements == null) {
-            loaded.announcements = defaults.announcements;
-        } else {
-            Map<String, String> merged = new LinkedHashMap<>(defaults.announcements);
-            merged.putAll(loaded.announcements);
-            loaded.announcements = merged;
-        }
-
-        if (loaded.abilityDurationTicks <= 0) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] config.yml: abilityDurationTicks must be > 0; using default {}.",
-                defaults.abilityDurationTicks);
-            loaded.abilityDurationTicks = defaults.abilityDurationTicks;
-        }
-        if (loaded.abilityCooldownTicks <= 0) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] config.yml: abilityCooldownTicks must be > 0; using default {}.",
-                defaults.abilityCooldownTicks);
-            loaded.abilityCooldownTicks = defaults.abilityCooldownTicks;
-        }
-        if (loaded.offlineResetDays <= 0) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] config.yml: offlineResetDays must be > 0; using default {}.",
-                defaults.offlineResetDays);
-            loaded.offlineResetDays = defaults.offlineResetDays;
-        }
     }
 }
