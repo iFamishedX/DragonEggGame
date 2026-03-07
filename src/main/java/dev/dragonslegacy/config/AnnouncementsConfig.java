@@ -2,6 +2,7 @@ package dev.dragonslegacy.config;
 
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.meta.Comment;
+import org.spongepowered.configurate.objectmapping.meta.Setting;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -16,6 +17,10 @@ public class AnnouncementsConfig {
 
     /** Cached unmodifiable copy of the built-in default templates. */
     private static final Map<String, String> DEFAULTS = buildDefaults();
+
+    @Comment("If true, messages will be parsed using MiniMessage formatting.")
+    @Setting("use_minimessage")
+    public boolean useMiniMessage = true;
 
     @Comment("""
         Announcement message templates broadcast to all online players.

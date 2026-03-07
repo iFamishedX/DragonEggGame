@@ -16,18 +16,27 @@ import java.util.UUID;
  *   <li>canonical egg UUID</li>
  *   <li>current bearer UUID</li>
  *   <li>last time the bearer was online (world game-time ticks)</li>
+ *   <li>whether the egg has been legitimately created in this world</li>
  * </ul>
  */
 public class EggPersistentState extends SavedData {
 
-    private static final String KEY_EGG_ID          = "canonical_egg_id";
-    private static final String KEY_BEARER_UUID      = "bearer_uuid";
-    private static final String KEY_BEARER_LAST_SEEN = "bearer_last_seen";
+    private static final String KEY_EGG_ID           = "canonical_egg_id";
+    private static final String KEY_BEARER_UUID       = "bearer_uuid";
+    private static final String KEY_BEARER_LAST_SEEN  = "bearer_last_seen";
+    private static final String KEY_EGG_INITIALIZED   = "egg_initialized";
 
     private @Nullable UUID canonicalEggId;
     private @Nullable UUID bearerUUID;
     /** World game-time tick at which the bearer was last seen online. */
     private long bearerLastSeenTick = -1L;
+    /**
+     * {@code true} once the egg has been legitimately created in this world
+     * (Ender Dragon killed, egg first picked up, or first placed).
+     * Prevents the spawn-fallback from spawning an egg in a brand-new world
+     * where the dragon has never been defeated.
+     */
+    private boolean eggInitialized = false;
 
     public EggPersistentState() {}
 
@@ -43,7 +52,9 @@ public class EggPersistentState extends SavedData {
             UUIDUtil.CODEC.optionalFieldOf(KEY_BEARER_UUID)
                 .forGetter((EggPersistentState s) -> Optional.ofNullable(s.bearerUUID)),
             Codec.LONG.optionalFieldOf(KEY_BEARER_LAST_SEEN, -1L)
-                .forGetter((EggPersistentState s) -> s.bearerLastSeenTick)
+                .forGetter((EggPersistentState s) -> s.bearerLastSeenTick),
+            Codec.BOOL.optionalFieldOf(KEY_EGG_INITIALIZED, false)
+                .forGetter((EggPersistentState s) -> s.eggInitialized)
         ).apply(instance, EggPersistentState::decode));
 
     /** Type registration used by {@link net.minecraft.world.level.storage.DimensionDataStorage}. */
@@ -58,11 +69,13 @@ public class EggPersistentState extends SavedData {
     private static EggPersistentState decode(
             Optional<UUID> canonicalEggId,
             Optional<UUID> bearerUUID,
-            long bearerLastSeenTick) {
+            long bearerLastSeenTick,
+            boolean eggInitialized) {
         EggPersistentState state = new EggPersistentState();
         state.canonicalEggId     = canonicalEggId.orElse(null);
         state.bearerUUID         = bearerUUID.orElse(null);
         state.bearerLastSeenTick = bearerLastSeenTick;
+        state.eggInitialized     = eggInitialized;
         return state;
     }
 
@@ -88,6 +101,13 @@ public class EggPersistentState extends SavedData {
 
     public void setBearerLastSeenTick(long tick) {
         this.bearerLastSeenTick = tick;
+        setDirty();
+    }
+
+    public boolean isEggInitialized() { return eggInitialized; }
+
+    public void setEggInitialized(boolean initialized) {
+        this.eggInitialized = initialized;
         setDirty();
     }
 }

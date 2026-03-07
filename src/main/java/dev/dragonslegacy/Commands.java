@@ -25,36 +25,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.dragonslegacy.DragonsLegacyMod.LOGGER;
+import static net.minecraft.commands.Commands.literal;
 
 public class Commands {
     private static final List<CommandNode> ALL = new ArrayList<>();
-
-    static {
-        add(
-            new CommandNode(DragonsLegacyMod.MOD_ID_ALIAS, "Get info about the mod", Commands::deg$info)
-                .withPermission(Perms.MOD_INFO, PermissionLevel.OWNERS)
-                .addChild(new CommandNode("reload", "Reload config and data", Commands::reload)
-                    .withPermission(Perms.RELOAD, PermissionLevel.OWNERS)
-                )
-        );
-        add(
-            new CommandNode("dragon_egg")
-                .withOptionalPermission(Perms.BASE)
-                .addChild(new CommandNode(
-                        "bearer",
-                        "Get info about the current bearer of the Dragon Egg",
-                        Commands::dragon_egg$bearer
-                    )
-                        .withOptionalPermission(Perms.BEARER)
-                )
-                .addChild(new CommandNode("info", "Get info about the Dragon Egg game", Commands::dragon_egg$info)
-                    .withOptionalPermission(Perms.INFO)
-                )
-                .addChild(new CommandNode("help", "View all commands", Commands::dragon_egg$help)
-                    .withOptionalPermission(Perms.HELP)
-                )
-        );
-    }
 
     public static void add(CommandNode node) {
         ALL.add(node);
@@ -66,8 +40,55 @@ public class Commands {
 
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            // Rebuild ALL so the help listing always reflects the current config names.
+            ALL.clear();
+
+            dev.dragonslegacy.config.CommandsConfig cmds =
+                DragonsLegacyMod.configManager.getCommands();
+            String rootName    = cmds.rootCommand   != null ? cmds.rootCommand                  : "dragon_egg";
+            String bearerName  = cmds.subcommands   != null ? cmds.subcommands.bearer            : "bearer";
+            String infoName    = cmds.subcommands   != null ? cmds.subcommands.info              : "info";
+            String helpName    = cmds.subcommands   != null ? cmds.subcommands.help              : "help";
+
+            ALL.add(
+                new CommandNode(DragonsLegacyMod.MOD_ID_ALIAS, "Get info about the mod", Commands::deg$info)
+                    .withPermission(Perms.MOD_INFO, PermissionLevel.OWNERS)
+                    .addChild(new CommandNode("reload", "Reload config and data", Commands::reload)
+                        .withPermission(Perms.RELOAD, PermissionLevel.OWNERS)
+                    )
+            );
+            ALL.add(
+                new CommandNode(rootName)
+                    .withOptionalPermission(Perms.BASE)
+                    .addChild(new CommandNode(
+                            bearerName,
+                            "Get info about the current bearer of the Dragon Egg",
+                            Commands::dragon_egg$bearer
+                        )
+                            .withOptionalPermission(Perms.BEARER)
+                    )
+                    .addChild(new CommandNode(infoName, "Get info about the Dragon Egg game", Commands::dragon_egg$info)
+                        .withOptionalPermission(Perms.INFO)
+                    )
+                    .addChild(new CommandNode(helpName, "View all commands", Commands::dragon_egg$help)
+                        .withOptionalPermission(Perms.HELP)
+                    )
+            );
+
             for (CommandNode node : ALL)
                 dispatcher.register(node.build());
+
+            // Register root command aliases as Brigadier redirects.
+            if (cmds.rootAliases != null) {
+                var rootNode = dispatcher.getRoot().getChild(rootName);
+                if (rootNode != null) {
+                    for (String alias : cmds.rootAliases) {
+                        if (alias != null && !alias.isEmpty() && !alias.equals(rootName)) {
+                            dispatcher.register(literal(alias).redirect(rootNode));
+                        }
+                    }
+                }
+            }
         });
     }
 

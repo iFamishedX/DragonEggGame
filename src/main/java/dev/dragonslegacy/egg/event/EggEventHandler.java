@@ -143,6 +143,18 @@ public class EggEventHandler {
             if (srv != null) tracker.scanAndLocateEgg(srv);
         });
 
+        // Detect Ender Dragon death: mark the egg as initialized so the spawn
+        // fallback knows a legitimate egg now exists in the world.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_UNLOAD.register(
+            (entity, world) -> {
+                if (!(entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon)) return;
+                if (entity.getRemovalReason() != net.minecraft.world.entity.Entity.RemovalReason.KILLED) return;
+                DragonsLegacy legacy = DragonsLegacy.getInstance();
+                if (legacy == null) return;
+                legacy.getPersistentState().setEggInitialized(true);
+            }
+        );
+
         // Watch item entities that are dying (lava, void, despawn) and protect egg
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_UNLOAD.register(
             (entity, world) -> {

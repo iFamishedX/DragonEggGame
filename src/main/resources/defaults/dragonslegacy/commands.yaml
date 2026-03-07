@@ -1,0 +1,43 @@
+# Commands configuration for Dragon's Legacy.
+
+# The literal name of the root player command.
+# This is the text players type after the slash, e.g. /dragon_egg bearer.
+# Default: "dragon_egg"
+root_command: "dragon_egg"
+
+# Aliases for the root command.
+# Players can use any of these as a shortcut for the root command.
+# Example: typing /dragonegg bearer works the same as /dragon_egg bearer.
+root_aliases:
+  - "dragonegg"
+
+# Names of the subcommands available under the root command.
+# Change these to rename specific subcommands.
+subcommands:
+  # Shows who currently holds the Dragon Egg and their last known location.
+  bearer: "bearer"
+
+  # Shows information and rules about the Dragon Egg game.
+  info: "info"
+
+  # Lists all available Dragon Egg commands.
+  help: "help"
+
+# Messages shown by /dragon_egg commands.
+# Supports MiniMessage formatting and PB4 placeholders such as %deg:bearer%.
+messages:
+  bearer_exact: "<yellow>The %deg:item% is currently held by <gold>%deg:bearer%</> and was last seen at <gold>%deg:pos%</>."
+  bearer_randomized: "<yellow>The %deg:item% is currently held by <gold>%deg:bearer%</> and was last seen around <gold>%deg:pos%</>."
+  bearer_hidden: "<yellow>The %deg:item% is currently held by <gold>%deg:bearer%</>."
+  no_bearer: "<yellow>No one has snatched the %deg:item% yet."
+  bearer_error: "<red>Currently not available."
+  bearer_changed: "<yellow><gold>%deg:bearer%</> now has the %deg:item%!"
+
+# Actions executed on certain egg event triggers.
+# See the wiki for full documentation: https://github.com/iFamishedX/DragonEggGame/wiki
+actions: []
+
+# Example - run a command when the bearer changes:
+# actions:
+#   - trigger: "bearer_changed"
+#     command: "say The Dragon Egg has a new bearer!"

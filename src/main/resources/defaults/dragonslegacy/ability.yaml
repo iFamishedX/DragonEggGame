@@ -1,0 +1,45 @@
+# Configuration for the Dragon's Hunger ability.
+
+# How long the ability lasts in ticks (20 ticks = 1 second).
+# Default: 6000 (5 minutes)
+duration_ticks: 6000
+
+# How long before the ability can be used again in ticks.
+# Default: 1200 (1 minute)
+cooldown_ticks: 1200
+
+# Status effects applied while Dragon's Hunger is active.
+effects:
+  - id: "minecraft:strength"
+    amplifier: 1
+    show_particles: true
+    show_icon: true
+
+  - id: "minecraft:speed"
+    amplifier: 1
+    show_particles: true
+    show_icon: true
+
+  - id: "minecraft:hunger"
+    amplifier: 1
+    show_particles: false
+    show_icon: false
+
+# Attribute modifiers applied while Dragon's Hunger is active.
+attributes:
+  - id: "minecraft:max_health"
+    amount: 20.0
+    operation: "add_value"
+    uuid: "00000000-0000-0000-0000-000000000010"
+
+  - id: "minecraft:attack_damage"
+    amount: 4.0
+    operation: "add_value"
+    uuid: "00000000-0000-0000-0000-000000000011"
+
+# Example - add a movement speed bonus during the ability:
+# attributes:
+#   - id: "minecraft:movement_speed"
+#     amount: 0.1
+#     operation: "add_multiplied_total"
+#     uuid: "00000000-0000-0000-0000-000000000012"

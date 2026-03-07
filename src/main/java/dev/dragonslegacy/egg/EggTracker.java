@@ -66,6 +66,7 @@ public class EggTracker {
 
         persistentState.setBearerUUID(player.getUUID());
         persistentState.setBearerLastSeenTick(player.level().getGameTime());
+        persistentState.setEggInitialized(true);
 
         eventBus.publish(new EggPickedUpEvent(player));
         if (!player.getUUID().equals(oldBearer)) {
@@ -92,6 +93,8 @@ public class EggTracker {
         currentState      = EggState.PLACED_BLOCK;
         currentBearerUUID = null;
         placedLocation    = pos;
+
+        persistentState.setEggInitialized(true);
 
         eventBus.publish(new EggPlacedEvent(pos));
         if (oldBearer != null) {

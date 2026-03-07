@@ -91,6 +91,8 @@ public class EggProtectionManager {
     public void verifyEggSafety(MinecraftServer server) {
         DragonsLegacy legacy = DragonsLegacy.getInstance();
         if (legacy == null) return;
+        // Do not spawn or teleport if the egg has never been legitimately created.
+        if (!legacy.getPersistentState().isEggInitialized()) return;
         EggTracker tracker = legacy.getEggTracker();
         EggState state = tracker.getCurrentState();
 

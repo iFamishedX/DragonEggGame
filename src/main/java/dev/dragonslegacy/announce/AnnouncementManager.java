@@ -53,6 +53,9 @@ public class AnnouncementManager {
 
     private @Nullable MinecraftServer server;
 
+    /** Whether to parse templates as MiniMessage. Default {@code true}. */
+    private boolean useMiniMessage = true;
+
     /**
      * Runtime announcement templates, populated from {@link AnnouncementsConfig}
      * after config is loaded.  Falls back to the MiniMessage defaults in
@@ -72,6 +75,15 @@ public class AnnouncementManager {
      */
     public void setTemplates(Map<String, String> templates) {
         this.templates = templates != null ? templates : new HashMap<>();
+    }
+
+    /**
+     * Sets whether broadcast messages are parsed as MiniMessage.
+     *
+     * @param useMiniMessage {@code true} to enable MiniMessage parsing (default), {@code false} for plain text
+     */
+    public void setUseMiniMessage(boolean useMiniMessage) {
+        this.useMiniMessage = useMiniMessage;
     }
 
     // -------------------------------------------------------------------------
@@ -214,23 +226,33 @@ public class AnnouncementManager {
     }
 
     /**
-     * Parses {@code template} as MiniMessage, resolves {@code placeholders} as
-     * unparsed tags (e.g. {@code <player>}), converts the result to a Minecraft
-     * {@link Component} via legacy § codes, and broadcasts it to every online player.
+     * Parses {@code template} as MiniMessage (if {@link #useMiniMessage} is enabled),
+     * resolves {@code placeholders} as unparsed tags (e.g. {@code <player>}),
+     * converts the result to a Minecraft {@link Component}, and broadcasts it to every
+     * online player.
      *
-     * @param template     MiniMessage template, e.g. {@code "<gold>[Dragon's Legacy]</gold> <player> joined!"}
+     * <p>When MiniMessage is disabled the template is broadcast as plain text after
+     * substituting {@code ${key}} tokens with values from {@code placeholders}.
+     *
+     * @param template     message template
      * @param placeholders map of placeholder keys to plain-text values
      */
     private void broadcastMiniMessage(String template, Map<String, String> placeholders) {
         if (server == null) return;
-        TagResolver.Builder resolverBuilder = TagResolver.builder();
-        for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-            resolverBuilder.resolver(Placeholder.unparsed(entry.getKey(), entry.getValue()));
+        Component mcComponent;
+        if (useMiniMessage) {
+            TagResolver.Builder resolverBuilder = TagResolver.builder();
+            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                resolverBuilder.resolver(Placeholder.unparsed(entry.getKey(), entry.getValue()));
+            }
+            net.kyori.adventure.text.Component adventureComponent =
+                MINI_MESSAGE.deserialize(template, resolverBuilder.build());
+            String legacyText = LEGACY_SERIALIZER.serialize(adventureComponent);
+            mcComponent = Component.literal(legacyText);
+        } else {
+            String plainText = AnnouncementFormatter.format(template, placeholders);
+            mcComponent = Component.literal(plainText);
         }
-        net.kyori.adventure.text.Component adventureComponent =
-            MINI_MESSAGE.deserialize(template, resolverBuilder.build());
-        String legacyText = LEGACY_SERIALIZER.serialize(adventureComponent);
-        Component mcComponent = Component.literal(legacyText);
         server.getPlayerList().broadcastSystemMessage(mcComponent, false);
     }
 
