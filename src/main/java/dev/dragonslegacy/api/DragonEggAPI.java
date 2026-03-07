@@ -148,7 +148,7 @@ public class DragonEggAPI {
         Level oldWorld = data.world != null ? data.world : world;
         if (
             !oldWorld.equals(world) ||
-            !pos.closerThan(data.getRandomizedPosition().getCenter(), DragonsLegacyMod.configManager.getMain().searchRadius)
+            !pos.closerThan(data.getRandomizedPosition().getCenter(), configManager.getMain().searchRadius)
         ) {
             data.clearRandomizedPosition();
         }
@@ -163,7 +163,7 @@ public class DragonEggAPI {
     }
 
     private static synchronized void trackEntity(Entity entity) {
-        if (DragonsLegacyMod.configManager.getMain().getVisibility(getPositionType(entity)) == VisibilityType.EXACT) entity.setGlowingTag(true);
+        if (configManager.getMain().getVisibility(getPositionType(entity)) == VisibilityType.EXACT) entity.setGlowingTag(true);
         Events.SCHEDULED_ACTIONS.put(
             entity.getUUID(), new ScheduledEvent(
                 100,
