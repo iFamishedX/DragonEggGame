@@ -2,7 +2,6 @@ package dev.dragonslegacy;
 
 import com.mojang.brigadier.context.CommandContext;
 import dev.dragonslegacy.api.DragonEggAPI;
-import dev.dragonslegacy.config.Config;
 import dev.dragonslegacy.config.Data;
 import dev.dragonslegacy.config.MessageString;
 import dev.dragonslegacy.features.Actions;
@@ -25,7 +24,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.dragonslegacy.DragonsLegacyMod.CONFIG;
 import static dev.dragonslegacy.DragonsLegacyMod.LOGGER;
 
 public class Commands {
@@ -74,27 +72,17 @@ public class Commands {
     }
 
     private static int reload(CommandContext<CommandSourceStack> context) {
-        if (!reload()) {
-            context.getSource().sendFailure(Component.literal(
-                "Failed to load config, using previous value instead. See console for more information."));
-            return -1;
-        }
+        reload();
         context.getSource()
             .sendSuccess(() -> Component.literal("Reloaded Dragon's Legacy config and data"), false);
         return 1;
     }
 
-    public static boolean reload() {
-        Config oldConfig = CONFIG;
-        CONFIG = Config.loadAndUpdateOrCreate();
-        if (CONFIG == oldConfig) {
-            LOGGER.error("Failed to load config, using previous value instead.");
-            return false;
-        }
+    public static void reload() {
+        DragonsLegacyMod.configManager.reload();
         Actions.register();
         DragonEggAPI.init();
         LOGGER.info("Reloaded Dragon's Legacy config and data");
-        return true;
     }
 
     private static int deg$info(CommandContext<CommandSourceStack> context) {
@@ -131,18 +119,18 @@ public class Commands {
         CommandSourceStack source = context.getSource();
         Data data = DragonEggAPI.getData();
         if (data == null) {
-            source.sendFailure(CONFIG.messages.bearerError.node.toText(PlaceholderContext.of(
+            source.sendFailure(DragonsLegacyMod.configManager.getCommands().messages.bearerError.node.toText(PlaceholderContext.of(
                 source.withMaximumPermission(LevelBasedPermissionSet.OWNER)
             )));
             return -1;
         }
 
         MessageString message;
-        if (data.playerUUID == null) message = CONFIG.messages.noBearer;
-        else message = switch (CONFIG.getVisibility(data.type)) {
-            case EXACT -> CONFIG.messages.bearerExact;
-            case RANDOMIZED -> CONFIG.messages.bearerRandomized;
-            case HIDDEN -> CONFIG.messages.bearerHidden;
+        if (data.playerUUID == null) message = DragonsLegacyMod.configManager.getCommands().messages.noBearer;
+        else message = switch (DragonsLegacyMod.configManager.getMain().getVisibility(data.type)) {
+            case EXACT -> DragonsLegacyMod.configManager.getCommands().messages.bearerExact;
+            case RANDOMIZED -> DragonsLegacyMod.configManager.getCommands().messages.bearerRandomized;
+            case HIDDEN -> DragonsLegacyMod.configManager.getCommands().messages.bearerHidden;
         };
 
         TextNode node = message.node;
@@ -155,7 +143,7 @@ public class Commands {
 
     private static int dragon_egg$info(CommandContext<CommandSourceStack> context) {
         context.getSource().sendSuccess(
-            () -> CONFIG.messages.info.node.toText(PlaceholderContext.of(context
+            () -> DragonsLegacyMod.configManager.getCommands().messages.info.node.toText(PlaceholderContext.of(context
                 .getSource()
                 .withMaximumPermission(LevelBasedPermissionSet.OWNER))),
             false

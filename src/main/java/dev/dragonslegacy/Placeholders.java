@@ -2,8 +2,8 @@ package dev.dragonslegacy;
 
 import dev.dragonslegacy.api.APIUtils;
 import dev.dragonslegacy.api.DragonEggAPI;
-import dev.dragonslegacy.config.Config;
 import dev.dragonslegacy.config.Data;
+import dev.dragonslegacy.config.VisibilityType;
 import eu.pb4.placeholders.api.PlaceholderHandler;
 import eu.pb4.placeholders.api.PlaceholderResult;
 import me.lucko.fabric.api.permissions.v0.Permissions;
@@ -16,8 +16,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import java.util.Map;
-
-import static dev.dragonslegacy.DragonsLegacyMod.CONFIG;
 
 public class Placeholders {
     public static final Map<Identifier, PlaceholderHandler> PLACEHOLDERS = Map.of(
@@ -41,7 +39,7 @@ public class Placeholders {
         (ctx, arg) -> {
             Data data = DragonEggAPI.getData();
             if (data == null) return PlaceholderResult.invalid("No Data");
-            Config.VisibilityType visibilityType = CONFIG.getVisibility(data.type);
+            VisibilityType visibilityType = DragonsLegacyMod.configManager.getMain().getVisibility(data.type);
             return PlaceholderResult.value(
                 switch (visibilityType) {
                     case EXACT -> data.getBlockPos().toShortString();

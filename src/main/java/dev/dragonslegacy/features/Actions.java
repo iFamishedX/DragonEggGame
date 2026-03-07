@@ -66,7 +66,7 @@ public class Actions {
         }
         registeredEventListeners.clear();
 
-        for (Action action : CONFIG.actions) {
+        for (Action action : configManager.getCommands().actions) {
             if (action.trigger() == null) {
                 LOGGER.warn("Skipping event listener without trigger: {}", action);
                 continue;

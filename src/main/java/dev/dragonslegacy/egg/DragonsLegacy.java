@@ -3,7 +3,11 @@ package dev.dragonslegacy.egg;
 import dev.dragonslegacy.DragonsLegacyMod;
 import dev.dragonslegacy.ability.AbilityEngine;
 import dev.dragonslegacy.announce.AnnouncementManager;
+import dev.dragonslegacy.config.AbilityConfig;
+import dev.dragonslegacy.config.AnnouncementsConfig;
 import dev.dragonslegacy.config.ConfigManager;
+import dev.dragonslegacy.config.MainConfig;
+import dev.dragonslegacy.config.SpawnConfig;
 import dev.dragonslegacy.egg.event.DragonEggEventBus;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +25,6 @@ public class DragonsLegacy {
     // ------------------------------------------------------------------
     // Sub-managers
     // ------------------------------------------------------------------
-    private final ConfigManager          configManager;
     private final DragonEggEventBus      eventBus;
     private final EggPersistentState     persistentState;
     private final EggIdentityManager     identityManager;
@@ -37,8 +40,7 @@ public class DragonsLegacy {
     // Construction (private – use getInstance() after init())
     // ------------------------------------------------------------------
 
-    private DragonsLegacy(EggPersistentState persistentState, ConfigManager configManager) {
-        this.configManager        = configManager;
+    private DragonsLegacy(EggPersistentState persistentState) {
         this.persistentState      = persistentState;
         this.eventBus             = new DragonEggEventBus();
         this.identityManager      = new EggIdentityManager();
@@ -63,18 +65,16 @@ public class DragonsLegacy {
      * @param server the running {@link MinecraftServer}
      */
     public static synchronized void init(MinecraftServer server) {
-        // 1. Load config first so values are available to all subsystems
-        ConfigManager configManager = new ConfigManager();
-        configManager.init();
+        // ConfigManager is already initialised in DragonsLegacyMod.onInitialize()
 
-        // 2. Load or create persistent state from overworld storage
+        // Load or create persistent state from overworld storage
         EggPersistentState state = server.overworld()
             .getDataStorage()
             .computeIfAbsent(EggPersistentState.TYPE);
 
-        DragonsLegacy legacy = new DragonsLegacy(state, configManager);
+        DragonsLegacy legacy = new DragonsLegacy(state);
 
-        // 3. Sync identity manager with loaded state
+        // Sync identity manager with loaded state
         if (state.getCanonicalEggId() != null) {
             legacy.identityManager.setCanonicalEggId(state.getCanonicalEggId());
         }
@@ -95,7 +95,7 @@ public class DragonsLegacy {
      * running subsystems.  Called from {@code /dragonslegacy reload}.
      */
     public void reload() {
-        configManager.reload();
+        DragonsLegacyMod.configManager.reload();
         applyConfig();
         DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Configuration reloaded.");
     }
@@ -105,18 +105,18 @@ public class DragonsLegacy {
      * honours them.  Safe to call multiple times (e.g. on reload).
      */
     private void applyConfig() {
-        // Ability timers
-        abilityEngine.getTimers().setConfiguredDuration(configManager.getAbilityDurationTicks());
-        abilityEngine.getTimers().setConfiguredCooldown(configManager.getAbilityCooldownTicks());
+        AbilityConfig ability = DragonsLegacyMod.configManager.getAbility();
+        abilityEngine.getTimers().setConfiguredDuration(ability.durationTicks);
+        abilityEngine.getTimers().setConfiguredCooldown(ability.cooldownTicks);
 
-        // Offline-reset threshold
-        eggOfflineResetManager.setOfflineThresholdDays(configManager.getOfflineResetDays());
+        MainConfig main = DragonsLegacyMod.configManager.getMain();
+        eggOfflineResetManager.setOfflineThresholdDays(main.offlineResetDays);
 
-        // Spawn-fallback toggle
-        eggSpawnFallback.setEnabled(configManager.getSpawnFallbackEnabled());
+        SpawnConfig spawn = DragonsLegacyMod.configManager.getSpawn();
+        eggSpawnFallback.setEnabled(spawn.fallbackEnabled);
 
-        // Announcement templates
-        announcementManager.setTemplates(configManager.getAnnouncementTemplates());
+        AnnouncementsConfig ann = DragonsLegacyMod.configManager.getAnnouncements();
+        announcementManager.setTemplates(ann.templates);
     }
 
     /**
@@ -155,5 +155,5 @@ public class DragonsLegacy {
     public EggOfflineResetManager getEggOfflineResetManager() { return eggOfflineResetManager; }
     public AbilityEngine          getAbilityEngine()          { return abilityEngine; }
     public AnnouncementManager    getAnnouncementManager()    { return announcementManager; }
-    public ConfigManager          getConfigManager()          { return configManager; }
+    public ConfigManager          getConfigManager()          { return DragonsLegacyMod.configManager; }
 }

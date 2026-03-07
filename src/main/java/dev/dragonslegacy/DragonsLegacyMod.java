@@ -1,7 +1,7 @@
 package dev.dragonslegacy;
 
 import dev.dragonslegacy.command.DragonsLegacyCommands;
-import dev.dragonslegacy.config.Config;
+import dev.dragonslegacy.config.ConfigManager;
 import dev.dragonslegacy.features.Actions;
 import dev.dragonslegacy.egg.event.EggEventHandler;
 import net.fabricmc.api.ModInitializer;
@@ -20,7 +20,7 @@ public class DragonsLegacyMod implements ModInitializer {
     public static final String MOD_ID_ALIAS = "deg";
     public static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID);
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    public static Config CONFIG;
+    public static ConfigManager configManager = new ConfigManager();
     @Nullable
     public static MinecraftServer server;
 
@@ -44,7 +44,7 @@ public class DragonsLegacyMod implements ModInitializer {
 
         Placeholders.register();
         LootConditions.register();
-        CONFIG = Config.loadAndUpdateOrCreate();
+        configManager.init();
         Commands.register();
         DragonsLegacyCommands.register();
         Events.register();

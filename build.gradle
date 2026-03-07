@@ -30,6 +30,8 @@ dependencies {
     // other dependencies
     shadow implementation("org.spongepowered:configurate-hocon:${project.configurate_version}")
     shadow implementation("org.spongepowered:configurate-yaml:${project.configurate_version}")
+    shadow implementation("net.kyori:adventure-text-minimessage:${project.minimessage_version}")
+    shadow implementation("net.kyori:adventure-text-serializer-legacy:${project.minimessage_version}")
     include implementation("net.objecthunter:exp4j:${project.exp4j_version}")
 }
 

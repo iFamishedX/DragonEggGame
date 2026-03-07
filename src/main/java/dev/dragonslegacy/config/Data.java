@@ -55,7 +55,7 @@ public class Data {
 
     public @NotNull BlockPos getRandomizedPosition() {
         if (this._randomizedPosition == null) {
-            BlockPos randPos = Utils.randomizePosition(this.getBlockPos(), CONFIG.searchRadius);
+            BlockPos randPos = Utils.randomizePosition(this.getBlockPos(), configManager.getMain().searchRadius);
             this._randomizedPosition = new Vector3i(randPos.getX(), randPos.getY(), randPos.getZ());
         }
         return new BlockPos(
