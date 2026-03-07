@@ -16,17 +16,19 @@ import java.nio.file.Path;
  *
  * <h3>Files managed</h3>
  * <ul>
- *   <li>{@code main.yaml}          – core egg settings</li>
- *   <li>{@code ability.yaml}       – Dragon's Hunger ability timers</li>
- *   <li>{@code announcements.yaml} – broadcast message templates (MiniMessage)</li>
- *   <li>{@code spawn.yaml}         – spawn-fallback &amp; BlueMap marker settings</li>
- *   <li>{@code commands.yaml}      – /dragon_egg messages and action triggers</li>
+ *   <li>{@code main.yaml}            – core egg settings</li>
+ *   <li>{@code ability.yaml}         – Dragon's Hunger ability timers, effects, and attributes</li>
+ *   <li>{@code passive_effects.yaml} – passive effects/attributes while holding the egg</li>
+ *   <li>{@code announcements.yaml}   – broadcast message templates (MiniMessage)</li>
+ *   <li>{@code spawn.yaml}           – spawn-fallback &amp; BlueMap marker settings</li>
+ *   <li>{@code commands.yaml}        – /dragon_egg messages and action triggers</li>
  * </ul>
  */
 public class ConfigManager {
 
     private MainConfig          main          = new MainConfig();
     private AbilityConfig       ability       = new AbilityConfig();
+    private PassiveEffectsConfig passiveEffects = new PassiveEffectsConfig();
     private AnnouncementsConfig announcements = new AnnouncementsConfig();
     private SpawnConfig         spawn         = new SpawnConfig();
     private CommandsConfig      commands      = new CommandsConfig();
@@ -44,22 +46,24 @@ public class ConfigManager {
         } catch (IOException e) {
             DragonsLegacyMod.LOGGER.warn("[Dragon's Legacy] Could not create config directory.", e);
         }
-        main          = loadOrCreate("main.yaml",          MainConfig.class,          new MainConfig());
-        ability       = loadOrCreate("ability.yaml",       AbilityConfig.class,       new AbilityConfig());
-        announcements = loadOrCreate("announcements.yaml", AnnouncementsConfig.class, new AnnouncementsConfig());
-        spawn         = loadOrCreate("spawn.yaml",         SpawnConfig.class,         new SpawnConfig());
-        commands      = loadOrCreate("commands.yaml",      CommandsConfig.class,      new CommandsConfig());
+        main          = loadOrCreate("main.yaml",            MainConfig.class,          new MainConfig());
+        ability       = loadOrCreate("ability.yaml",         AbilityConfig.class,       new AbilityConfig());
+        passiveEffects = loadOrCreate("passive_effects.yaml", PassiveEffectsConfig.class, new PassiveEffectsConfig());
+        announcements = loadOrCreate("announcements.yaml",   AnnouncementsConfig.class, new AnnouncementsConfig());
+        spawn         = loadOrCreate("spawn.yaml",           SpawnConfig.class,         new SpawnConfig());
+        commands      = loadOrCreate("commands.yaml",        CommandsConfig.class,      new CommandsConfig());
     }
 
     /**
      * Re-reads all five YAML files from disk.
      */
     public void reload() {
-        main          = reload("main.yaml",          MainConfig.class,          main);
-        ability       = reload("ability.yaml",       AbilityConfig.class,       ability);
-        announcements = reload("announcements.yaml", AnnouncementsConfig.class, announcements);
-        spawn         = reload("spawn.yaml",         SpawnConfig.class,         spawn);
-        commands      = reload("commands.yaml",      CommandsConfig.class,      commands);
+        main          = reload("main.yaml",            MainConfig.class,          main);
+        ability       = reload("ability.yaml",         AbilityConfig.class,       ability);
+        passiveEffects = reload("passive_effects.yaml", PassiveEffectsConfig.class, passiveEffects);
+        announcements = reload("announcements.yaml",   AnnouncementsConfig.class, announcements);
+        spawn         = reload("spawn.yaml",           SpawnConfig.class,         spawn);
+        commands      = reload("commands.yaml",        CommandsConfig.class,      commands);
         DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] All configuration files reloaded.");
     }
 
@@ -69,6 +73,7 @@ public class ConfigManager {
 
     public MainConfig          getMain()          { return main; }
     public AbilityConfig       getAbility()       { return ability; }
+    public PassiveEffectsConfig getPassiveEffects() { return passiveEffects; }
     public AnnouncementsConfig getAnnouncements() { return announcements; }
     public SpawnConfig         getSpawn()         { return spawn; }
     public CommandsConfig      getCommands()      { return commands; }
