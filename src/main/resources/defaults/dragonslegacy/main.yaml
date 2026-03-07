@@ -1,0 +1,40 @@
+# Main configuration for Dragon's Legacy.
+# These values control global behavior of the egg system.
+
+# The radius used when randomizing the egg's "last seen" position.
+# Larger values make the egg harder to track.
+search_radius: 25.0
+
+# If true, prevents the egg from entering Ender Chests.
+block_ender_chest: true
+
+# If true, prevents the egg from entering portable containers such as
+# shulker boxes or bundles.
+block_container_items: false
+
+# Number of days a bearer must be offline before the egg resets to spawn.
+offline_reset_days: 3.0
+
+# Distance in blocks for players to count as "nearby" the egg.
+nearby_range: 64
+
+# Controls how precise the egg's location is when reported.
+# Accepted values per position type:
+#   EXACT       - exact coordinates are shown
+#   RANDOMIZED  - coordinates are randomized within search_radius
+#   HIDDEN      - location is not shown
+visibility:
+  INVENTORY: "EXACT"
+  ITEM: "EXACT"
+  PLAYER: "HIDDEN"
+  BLOCK: "RANDOMIZED"
+  FALLING_BLOCK: "EXACT"
+  ENTITY: "EXACT"
+
+# Example - override specific types only:
+# visibility:
+#   PLAYER: "HIDDEN"
+#   BLOCK: "RANDOMIZED"
+
+# Reserved for future automation hooks.
+actions: []

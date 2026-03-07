@@ -38,12 +38,15 @@ public class EggSpawnFallback {
 
     /**
      * Checks whether the canonical egg exists anywhere. If not, spawns one at the
-     * overworld spawn point.  Does nothing when {@link #isEnabled()} is {@code false}.
+     * overworld spawn point.  Does nothing when {@link #isEnabled()} is {@code false}
+     * or when the egg has never been legitimately created in this world
+     * ({@code eggInitialized} is {@code false}).
      */
     public void ensureEggExists(MinecraftServer server) {
         if (!enabled) return;
         DragonsLegacy legacy = DragonsLegacy.getInstance();
         if (legacy == null) return;
+        if (!legacy.getPersistentState().isEggInitialized()) return;
         EggTracker tracker = legacy.getEggTracker();
         if (tracker.getCurrentState() != EggState.UNKNOWN) return;
         ensureEggAtSpawn(server, 1);

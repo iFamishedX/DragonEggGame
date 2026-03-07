@@ -139,6 +139,7 @@ public class DragonsLegacy {
 
         AnnouncementsConfig ann = DragonsLegacyMod.configManager.getAnnouncements();
         announcementManager.setTemplates(ann.templates);
+        announcementManager.setUseMiniMessage(ann.useMiniMessage);
     }
 
     /**

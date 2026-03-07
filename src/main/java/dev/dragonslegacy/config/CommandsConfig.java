@@ -3,7 +3,9 @@ package dev.dragonslegacy.config;
 import eu.pb4.placeholders.api.parsers.NodeParser;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.meta.Comment;
+import org.spongepowered.configurate.objectmapping.meta.Setting;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,6 +15,17 @@ import java.util.List;
 @ConfigSerializable
 public class CommandsConfig {
 
+    @Comment("The literal name of the root player command (e.g. the part after the slash).")
+    @Setting("root_command")
+    public String rootCommand = "dragon_egg";
+
+    @Comment("Aliases for the root command. Players can type any of these as a shortcut.")
+    @Setting("root_aliases")
+    public List<String> rootAliases = new ArrayList<>();
+
+    @Comment("Names of each subcommand under the root command.")
+    public SubcommandNames subcommands = new SubcommandNames();
+
     @Comment("Messages shown by /dragon_egg commands.")
     public Messages messages = new Messages();
 
@@ -21,6 +34,18 @@ public class CommandsConfig {
         See the wiki for full documentation: https://github.com/iFamishedX/DragonEggGame/wiki
         """)
     public List<Action> actions = List.of();
+
+    @ConfigSerializable
+    public static class SubcommandNames {
+        @Comment("Name of the subcommand that shows the current egg bearer.")
+        public String bearer = "bearer";
+
+        @Comment("Name of the subcommand that shows game information.")
+        public String info = "info";
+
+        @Comment("Name of the subcommand that lists available commands.")
+        public String help = "help";
+    }
 
     @ConfigSerializable
     public static class Messages {

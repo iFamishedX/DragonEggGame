@@ -7,8 +7,10 @@ import org.spongepowered.configurate.objectmapping.ObjectMapper;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * Loads, saves, and reloads all five Dragon's Legacy YAML configuration files
@@ -85,9 +87,10 @@ public class ConfigManager {
     private <T> T loadOrCreate(String fileName, Class<T> type, T defaults) {
         Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
         if (!path.toFile().isFile()) {
-            save(fileName, type, defaults);
-            DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Created default {} at {}.", fileName, path);
-            return defaults;
+            boolean copied = copyDefaultResource(fileName, path);
+            if (copied) {
+                DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Created default {} at {}.", fileName, path);
+            }
         }
         return reload(fileName, type, defaults);
     }
@@ -112,16 +115,26 @@ public class ConfigManager {
         }
     }
 
-    private <T> void save(String fileName, Class<T> type, T value) {
-        Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
-        YamlConfigurationLoader loader = buildLoader(path);
-        try {
-            CommentedConfigurationNode node = loader.createNode();
-            node.set(type, value);
-            loader.save(node);
-        } catch (Exception e) {
-            DragonsLegacyMod.LOGGER.warn("[Dragon's Legacy] Failed to save {}.", fileName, e);
+    /**
+     * Copies the bundled default resource for {@code fileName} to {@code dest}.
+     *
+     * @return {@code true} if the file was copied successfully; {@code false} otherwise
+     */
+    private boolean copyDefaultResource(String fileName, Path dest) {
+        String resourcePath = "defaults/dragonslegacy/" + fileName;
+        try (InputStream in = ConfigManager.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (in != null) {
+                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+                return true;
+            }
+        } catch (IOException e) {
+            DragonsLegacyMod.LOGGER.warn(
+                "[Dragon's Legacy] Could not copy default resource {} – file will not be created.", fileName, e);
+            return false;
         }
+        DragonsLegacyMod.LOGGER.warn(
+            "[Dragon's Legacy] Bundled default resource '{}' not found; config file will not be created.", resourcePath);
+        return false;
     }
 
     private static YamlConfigurationLoader buildLoader(Path path) {
