@@ -40,8 +40,10 @@ public class MainConfig {
         """)
     public Map<PositionType, VisibilityType> visibility = DEFAULT_VISIBILITY;
 
+    /** Returns the visibility type for the given position type, defaulting to HIDDEN if absent.
+     * The null check guards against malformed YAML deserialization setting visibility to null. */
     public VisibilityType getVisibility(@Nullable PositionType type) {
-        if (visibility == null) return DEFAULT_VISIBILITY.getOrDefault(type, VisibilityType.HIDDEN);
-        return visibility.getOrDefault(type, DEFAULT_VISIBILITY.getOrDefault(type, VisibilityType.HIDDEN));
+        Map<PositionType, VisibilityType> vis = (visibility != null) ? visibility : DEFAULT_VISIBILITY;
+        return vis.getOrDefault(type, DEFAULT_VISIBILITY.getOrDefault(type, VisibilityType.HIDDEN));
     }
 }

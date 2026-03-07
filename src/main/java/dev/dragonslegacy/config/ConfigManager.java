@@ -89,7 +89,7 @@ public class ConfigManager {
 
     private <T> T reload(String fileName, Class<T> type, T previous) {
         Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
-        YamlConfigurationLoader loader = buildLoader(path, type);
+        YamlConfigurationLoader loader = buildLoader(path);
         try {
             CommentedConfigurationNode node = loader.load();
             T loaded = node.get(type);
@@ -109,7 +109,7 @@ public class ConfigManager {
 
     private <T> void save(String fileName, Class<T> type, T value) {
         Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
-        YamlConfigurationLoader loader = buildLoader(path, type);
+        YamlConfigurationLoader loader = buildLoader(path);
         try {
             CommentedConfigurationNode node = loader.createNode();
             node.set(type, value);
@@ -119,7 +119,7 @@ public class ConfigManager {
         }
     }
 
-    private static <T> YamlConfigurationLoader buildLoader(Path path, Class<T> type) {
+    private static YamlConfigurationLoader buildLoader(Path path) {
         return YamlConfigurationLoader.builder()
             .path(path)
             .defaultOptions(opts -> opts.serializers(build -> {

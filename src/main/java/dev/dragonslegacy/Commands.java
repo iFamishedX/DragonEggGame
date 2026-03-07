@@ -78,12 +78,11 @@ public class Commands {
         return 1;
     }
 
-    public static boolean reload() {
+    public static void reload() {
         DragonsLegacyMod.configManager.reload();
         Actions.register();
         DragonEggAPI.init();
         LOGGER.info("Reloaded Dragon's Legacy config and data");
-        return true;
     }
 
     private static int deg$info(CommandContext<CommandSourceStack> context) {

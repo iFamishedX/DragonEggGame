@@ -206,11 +206,11 @@ public class AnnouncementManager {
 
     /**
      * Returns the template for {@code key} from the runtime map, or the
-     * MiniMessage default from {@link AnnouncementsConfig#defaultTemplates()} if absent.
+     * MiniMessage default from {@link AnnouncementsConfig#defaults()} if absent.
      */
     private String getTemplate(String key) {
         String value = templates.get(key);
-        return value != null ? value : AnnouncementsConfig.defaultTemplates().getOrDefault(key, "");
+        return value != null ? value : AnnouncementsConfig.defaults().getOrDefault(key, "");
     }
 
     /**

@@ -3,6 +3,7 @@ package dev.dragonslegacy.config;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.meta.Comment;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -12,6 +13,9 @@ import java.util.Map;
  */
 @ConfigSerializable
 public class AnnouncementsConfig {
+
+    /** Cached unmodifiable copy of the built-in default templates. */
+    private static final Map<String, String> DEFAULTS = buildDefaults();
 
     @Comment("""
         Announcement message templates broadcast to all online players.
@@ -30,7 +34,17 @@ public class AnnouncementsConfig {
         """)
     public Map<String, String> templates = defaultTemplates();
 
+    /** Returns a new mutable copy of the default templates (used for YAML initialisation). */
     public static Map<String, String> defaultTemplates() {
+        return new LinkedHashMap<>(DEFAULTS);
+    }
+
+    /** Returns the cached unmodifiable map of built-in defaults. */
+    public static Map<String, String> defaults() {
+        return DEFAULTS;
+    }
+
+    private static Map<String, String> buildDefaults() {
         Map<String, String> map = new LinkedHashMap<>();
         map.put("egg_picked_up",            "<gold>[Dragon's Legacy]</gold> <white><player> has picked up the Dragon's Egg!</white>");
         map.put("egg_dropped",              "<gold>[Dragon's Legacy]</gold> <white>The Dragon's Egg has been dropped!</white>");
@@ -42,6 +56,6 @@ public class AnnouncementsConfig {
         map.put("ability_expired",          "<gold>[Dragon's Legacy]</gold> <white>Dragon's Hunger has expired for <player>!</white>");
         map.put("ability_cooldown_started", "<gold>[Dragon's Legacy]</gold> <white>Dragon's Hunger is on cooldown for <seconds> seconds.</white>");
         map.put("ability_cooldown_ended",   "<gold>[Dragon's Legacy]</gold> <white>Dragon's Hunger is ready again!</white>");
-        return map;
+        return Collections.unmodifiableMap(map);
     }
 }
