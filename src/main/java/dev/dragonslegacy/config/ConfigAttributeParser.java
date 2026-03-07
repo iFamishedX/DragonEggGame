@@ -3,9 +3,7 @@ package dev.dragonslegacy.config;
 import dev.dragonslegacy.DragonsLegacyMod;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import org.jetbrains.annotations.Nullable;
@@ -45,8 +43,9 @@ public final class ConfigAttributeParser {
                 "[Dragon's Legacy] Invalid attribute identifier '{}' – skipping: {}", entry.id, e.getMessage());
             return null;
         }
-        return BuiltInRegistries.ATTRIBUTE.getHolder(ResourceKey.create(Registries.ATTRIBUTE, id))
-            .map(h -> (Holder<Attribute>) h).orElseGet(() -> {
+        return BuiltInRegistries.ATTRIBUTE.getOptional(id)
+            .map(attr -> (Holder<Attribute>) BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attr))
+            .orElseGet(() -> {
             DragonsLegacyMod.LOGGER.warn(
                 "[Dragon's Legacy] Unknown attribute '{}' – skipping.", entry.id);
             return null;
