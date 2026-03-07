@@ -107,6 +107,10 @@ public class EggEventHandler {
             DragonsLegacy legacy = DragonsLegacy.getInstance();
             if (legacy == null) return;
             legacy.getEggOfflineResetManager().onPlayerJoin(player);
+            // Re-apply passive effects if this player is the current bearer
+            if (player.getUUID().equals(legacy.getEggTracker().getCurrentBearer())) {
+                legacy.getPassiveEffectsEngine().applyToBearer(player);
+            }
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -114,6 +118,10 @@ public class EggEventHandler {
             DragonsLegacy legacy = DragonsLegacy.getInstance();
             if (legacy == null) return;
             legacy.getEggOfflineResetManager().onPlayerLeave(player);
+            // Remove passive effects when the bearer disconnects
+            if (player.getUUID().equals(legacy.getEggTracker().getCurrentBearer())) {
+                legacy.getPassiveEffectsEngine().removeFromPlayer(player);
+            }
         });
     }
 
@@ -173,20 +181,26 @@ public class EggEventHandler {
 
             legacy.getEventBus().subscribe(EggBearerChangedEvent.class, event -> {
                 DragonsLegacy current = DragonsLegacy.getInstance();
-                AbilityEngine engine = current == null ? null : current.getAbilityEngine();
-                if (engine == null) return;
+                if (current == null) return;
 
-                // Deactivate for the old bearer if the ability was active
+                AbilityEngine engine = current.getAbilityEngine();
+
+                // Deactivate ability and remove passive effects from old bearer
                 if (event.getPreviousBearerUUID() != null) {
                     ServerPlayer oldBearer = server.getPlayerList().getPlayer(event.getPreviousBearerUUID());
                     if (oldBearer != null) {
                         engine.deactivateDragonHunger(oldBearer, "lost_bearer_status");
+                        current.getPassiveEffectsEngine().removeFromPlayer(oldBearer);
                     }
                 }
 
-                // Reset cooldown so the new bearer can activate immediately
+                // Apply passive effects to the new bearer; reset cooldown
                 if (event.getNewBearerUUID() != null) {
                     engine.resetCooldownIfNeeded();
+                    ServerPlayer newBearer = server.getPlayerList().getPlayer(event.getNewBearerUUID());
+                    if (newBearer != null) {
+                        current.getPassiveEffectsEngine().applyToBearer(newBearer);
+                    }
                 }
             });
         });

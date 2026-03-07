@@ -246,7 +246,7 @@ public class DragonsLegacyCommands {
             return -1;
         }
 
-        legacy.reload();
+        legacy.reload(source.getServer());
         source.sendSuccess(
             () -> Component.literal("[Dragon's Legacy] Configuration reloaded successfully."),
             true

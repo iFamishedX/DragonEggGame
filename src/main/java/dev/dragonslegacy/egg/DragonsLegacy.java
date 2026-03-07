@@ -2,6 +2,7 @@ package dev.dragonslegacy.egg;
 
 import dev.dragonslegacy.DragonsLegacyMod;
 import dev.dragonslegacy.ability.AbilityEngine;
+import dev.dragonslegacy.ability.PassiveEffectsEngine;
 import dev.dragonslegacy.announce.AnnouncementManager;
 import dev.dragonslegacy.config.AbilityConfig;
 import dev.dragonslegacy.config.AnnouncementsConfig;
@@ -10,6 +11,7 @@ import dev.dragonslegacy.config.MainConfig;
 import dev.dragonslegacy.config.SpawnConfig;
 import dev.dragonslegacy.egg.event.DragonEggEventBus;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -34,6 +36,7 @@ public class DragonsLegacy {
     private final EggProtectionManager   eggProtectionManager;
     private final EggOfflineResetManager eggOfflineResetManager;
     private final AbilityEngine          abilityEngine;
+    private final PassiveEffectsEngine   passiveEffectsEngine;
     private final AnnouncementManager    announcementManager;
 
     // ------------------------------------------------------------------
@@ -50,6 +53,7 @@ public class DragonsLegacy {
         this.eggProtectionManager = new EggProtectionManager(eggSpawnFallback);
         this.eggOfflineResetManager = new EggOfflineResetManager(persistentState);
         this.abilityEngine        = new AbilityEngine();
+        this.passiveEffectsEngine = new PassiveEffectsEngine();
         this.announcementManager  = new AnnouncementManager();
     }
 
@@ -91,12 +95,30 @@ public class DragonsLegacy {
     }
 
     /**
-     * Reloads {@code config.yml} from disk and re-applies all values to the
+     * Reloads all config files from disk and re-applies all values to the
      * running subsystems.  Called from {@code /dragonslegacy reload}.
+     *
+     * <p>If a player is currently the bearer, passive effects are removed,
+     * configs are reloaded, and passive effects are re-applied so the
+     * bearer always reflects the latest config.
+     *
+     * @param server the running {@link MinecraftServer} (used to locate the current bearer)
      */
-    public void reload() {
+    public void reload(MinecraftServer server) {
+        // Remove passive effects from the current bearer before reloading config
+        ServerPlayer currentBearer = eggTracker.getBearerPlayer(server);
+        if (currentBearer != null) {
+            passiveEffectsEngine.removeFromPlayer(currentBearer);
+        }
+
         DragonsLegacyMod.configManager.reload();
         applyConfig();
+
+        // Re-apply passive effects with the new config
+        if (currentBearer != null) {
+            passiveEffectsEngine.applyToBearer(currentBearer);
+        }
+
         DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Configuration reloaded.");
     }
 
@@ -154,6 +176,7 @@ public class DragonsLegacy {
     public EggProtectionManager   getEggProtectionManager()   { return eggProtectionManager; }
     public EggOfflineResetManager getEggOfflineResetManager() { return eggOfflineResetManager; }
     public AbilityEngine          getAbilityEngine()          { return abilityEngine; }
+    public PassiveEffectsEngine   getPassiveEffectsEngine()   { return passiveEffectsEngine; }
     public AnnouncementManager    getAnnouncementManager()    { return announcementManager; }
     public ConfigManager          getConfigManager()          { return DragonsLegacyMod.configManager; }
 }
