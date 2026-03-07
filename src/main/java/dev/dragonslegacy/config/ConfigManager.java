@@ -87,8 +87,10 @@ public class ConfigManager {
     private <T> T loadOrCreate(String fileName, Class<T> type, T defaults) {
         Path path = DragonsLegacyMod.CONFIG_DIR.resolve(fileName);
         if (!path.toFile().isFile()) {
-            copyDefaultResource(fileName, path);
-            DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Created default {} at {}.", fileName, path);
+            boolean copied = copyDefaultResource(fileName, path);
+            if (copied) {
+                DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Created default {} at {}.", fileName, path);
+            }
         }
         return reload(fileName, type, defaults);
     }
@@ -115,21 +117,24 @@ public class ConfigManager {
 
     /**
      * Copies the bundled default resource for {@code fileName} to {@code dest}.
-     * If no bundled resource exists, a warning is logged and the file is not created.
+     *
+     * @return {@code true} if the file was copied successfully; {@code false} otherwise
      */
-    private void copyDefaultResource(String fileName, Path dest) {
+    private boolean copyDefaultResource(String fileName, Path dest) {
         String resourcePath = "defaults/dragonslegacy/" + fileName;
         try (InputStream in = ConfigManager.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (in != null) {
                 Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
-                return;
+                return true;
             }
         } catch (IOException e) {
             DragonsLegacyMod.LOGGER.warn(
                 "[Dragon's Legacy] Could not copy default resource {} – file will not be created.", fileName, e);
+            return false;
         }
         DragonsLegacyMod.LOGGER.warn(
             "[Dragon's Legacy] Bundled default resource '{}' not found; config file will not be created.", resourcePath);
+        return false;
     }
 
     private static YamlConfigurationLoader buildLoader(Path path) {

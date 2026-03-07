@@ -250,7 +250,17 @@ public class AnnouncementManager {
             String legacyText = LEGACY_SERIALIZER.serialize(adventureComponent);
             mcComponent = Component.literal(legacyText);
         } else {
-            String plainText = AnnouncementFormatter.format(template, placeholders);
+            // Plain-text path: the default templates use <key> MiniMessage syntax, so we
+            // replace those first.  ${key} style placeholders (custom templates) are then
+            // handled by AnnouncementFormatter.  Finally, any remaining MiniMessage tags
+            // are stripped so the message renders as clean plain text.
+            String plainText = template;
+            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                plainText = plainText.replace("<" + entry.getKey() + ">", entry.getValue());
+            }
+            plainText = AnnouncementFormatter.format(plainText, placeholders);
+            // Strip leftover MiniMessage tags with a simple regex.
+            plainText = plainText.replaceAll("<[^>]+>", "");
             mcComponent = Component.literal(plainText);
         }
         server.getPlayerList().broadcastSystemMessage(mcComponent, false);

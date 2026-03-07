@@ -45,10 +45,12 @@ public class Commands {
 
             dev.dragonslegacy.config.CommandsConfig cmds =
                 DragonsLegacyMod.configManager.getCommands();
-            String rootName    = cmds.rootCommand   != null ? cmds.rootCommand                  : "dragon_egg";
-            String bearerName  = cmds.subcommands   != null ? cmds.subcommands.bearer            : "bearer";
-            String infoName    = cmds.subcommands   != null ? cmds.subcommands.info              : "info";
-            String helpName    = cmds.subcommands   != null ? cmds.subcommands.help              : "help";
+            String rootName = cmds.rootCommand != null ? cmds.rootCommand : "dragon_egg";
+            dev.dragonslegacy.config.CommandsConfig.SubcommandNames sub =
+                cmds.subcommands != null ? cmds.subcommands : new dev.dragonslegacy.config.CommandsConfig.SubcommandNames();
+            String bearerName = sub.bearer != null ? sub.bearer : "bearer";
+            String infoName   = sub.info   != null ? sub.info   : "info";
+            String helpName   = sub.help   != null ? sub.help   : "help";
 
             ALL.add(
                 new CommandNode(DragonsLegacyMod.MOD_ID_ALIAS, "Get info about the mod", Commands::deg$info)
