@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 /**
- * Loads, saves, and reloads all five Dragon's Legacy YAML configuration files
+ * Loads, saves, and reloads all Dragon's Legacy YAML configuration files
  * under {@code config/dragonslegacy/}.
  *
  * <h3>Files managed</h3>
@@ -23,7 +23,8 @@ import java.nio.file.StandardCopyOption;
  *   <li>{@code passive_effects.yaml} – passive effects/attributes while holding the egg</li>
  *   <li>{@code announcements.yaml}   – broadcast message templates (MiniMessage)</li>
  *   <li>{@code spawn.yaml}           – spawn-fallback &amp; BlueMap marker settings</li>
- *   <li>{@code commands.yaml}        – /dragon_egg messages and action triggers</li>
+ *   <li>{@code commands.yaml}        – command names, aliases, and action triggers</li>
+ *   <li>{@code messages.yaml}        – command message texts and output modes</li>
  * </ul>
  */
 public class ConfigManager {
@@ -34,6 +35,7 @@ public class ConfigManager {
     private AnnouncementsConfig announcements = new AnnouncementsConfig();
     private SpawnConfig         spawn         = new SpawnConfig();
     private CommandsConfig      commands      = new CommandsConfig();
+    private MessagesConfig      messages      = new MessagesConfig();
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -54,10 +56,11 @@ public class ConfigManager {
         announcements = loadOrCreate("announcements.yaml",   AnnouncementsConfig.class, new AnnouncementsConfig());
         spawn         = loadOrCreate("spawn.yaml",           SpawnConfig.class,         new SpawnConfig());
         commands      = loadOrCreate("commands.yaml",        CommandsConfig.class,      new CommandsConfig());
+        messages      = loadOrCreate("messages.yaml",        MessagesConfig.class,      new MessagesConfig());
     }
 
     /**
-     * Re-reads all five YAML files from disk.
+     * Re-reads all YAML files from disk.
      */
     public void reload() {
         main          = reload("main.yaml",            MainConfig.class,          main);
@@ -66,6 +69,7 @@ public class ConfigManager {
         announcements = reload("announcements.yaml",   AnnouncementsConfig.class, announcements);
         spawn         = reload("spawn.yaml",           SpawnConfig.class,         spawn);
         commands      = reload("commands.yaml",        CommandsConfig.class,      commands);
+        messages      = reload("messages.yaml",        MessagesConfig.class,      messages);
         DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] All configuration files reloaded.");
     }
 
@@ -79,6 +83,7 @@ public class ConfigManager {
     public AnnouncementsConfig getAnnouncements() { return announcements; }
     public SpawnConfig         getSpawn()         { return spawn; }
     public CommandsConfig      getCommands()      { return commands; }
+    public MessagesConfig      getMessages()      { return messages; }
 
     // -------------------------------------------------------------------------
     // Private helpers

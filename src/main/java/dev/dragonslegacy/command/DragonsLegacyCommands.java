@@ -2,10 +2,13 @@ package dev.dragonslegacy.command;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import dev.dragonslegacy.DragonsLegacyMod;
 import dev.dragonslegacy.Perms;
 import dev.dragonslegacy.ability.AbilityEngine;
 import dev.dragonslegacy.ability.AbilityState;
 import dev.dragonslegacy.ability.AbilityTimers;
+import dev.dragonslegacy.config.CommandsConfig;
+import dev.dragonslegacy.config.MessagesConfig;
 import dev.dragonslegacy.egg.DragonsLegacy;
 import dev.dragonslegacy.egg.EggState;
 import dev.dragonslegacy.egg.EggTracker;
@@ -34,31 +37,81 @@ import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 /**
- * Registers and handles the {@code /dragonslegacy} admin command tree.
+ * Registers and handles the new {@code /dragonslegacy} (alias {@code /dl}) command tree.
  *
- * <p>Commands provided:
+ * <h3>Public subcommands</h3>
  * <ul>
- *   <li>{@code /dragonslegacy info} – Display full egg, bearer, and ability status.</li>
- *   <li>{@code /dragonslegacy setbearer <player>} – Force a player to become the bearer.</li>
- *   <li>{@code /dragonslegacy clearability} – Deactivate the Dragon's Hunger ability.</li>
- *   <li>{@code /dragonslegacy resetcooldown} – Reset the Dragon's Hunger cooldown.</li>
+ *   <li>{@code /dragonslegacy help}       – Display configurable help message.</li>
+ *   <li>{@code /dragonslegacy bearer}     – Show the current egg bearer.</li>
+ *   <li>{@code /dragonslegacy hunger on}  – Activate Dragon's Hunger (bearer only).</li>
+ *   <li>{@code /dragonslegacy hunger off} – Deactivate Dragon's Hunger (bearer only).</li>
  * </ul>
  *
- * <p>All commands require operator-level permission ({@link PermissionLevel#OWNERS}).
+ * <h3>Admin subcommands (requires operator permission)</h3>
+ * <ul>
+ *   <li>{@code /dragonslegacy info}               – Full egg/ability status.</li>
+ *   <li>{@code /dragonslegacy setbearer <player>} – Force-assign the bearer.</li>
+ *   <li>{@code /dragonslegacy clearability}       – Deactivate the ability.</li>
+ *   <li>{@code /dragonslegacy resetcooldown}      – Reset the cooldown.</li>
+ *   <li>{@code /dragonslegacy reload}             – Reload all configs.</li>
+ * </ul>
+ *
+ * <p>All user-facing output is read from {@code config/dragonslegacy/messages.yaml}
+ * via {@link MessagesConfig} and rendered by {@link MessageOutputSystem}.
+ * Command names and aliases are loaded from {@code config/dragonslegacy/commands.yaml}
+ * via {@link CommandsConfig}.
  */
 public class DragonsLegacyCommands {
 
     private DragonsLegacyCommands() {}
 
+    // -------------------------------------------------------------------------
+    // Registration
+    // -------------------------------------------------------------------------
+
     /**
-     * Registers the {@code /dragonslegacy} command tree with the Fabric command dispatcher.
-     * Must be called during mod initialisation (before the server starts).
+     * Registers the {@code /dragonslegacy} command tree (and its {@code /dl} alias)
+     * with the Fabric command dispatcher.  Must be called during mod initialisation.
+     *
+     * <p>Command names and aliases are read from {@link CommandsConfig} so that server
+     * owners can rename them via {@code commands.yaml}.
      */
     public static void register() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            CommandsConfig cmds = DragonsLegacyMod.configManager.getCommands();
+            CommandsConfig.SubcommandNames sub =
+                cmds.subcommands != null ? cmds.subcommands : new CommandsConfig.SubcommandNames();
+
+            // Resolve subcommand names (fall back to defaults if blank)
+            String rootName   = nonEmpty(cmds.rootCommand, "dragonslegacy");
+            String helpName   = nonEmpty(sub.help,      "help");
+            String bearerName = nonEmpty(sub.bearer,    "bearer");
+            String hungerName = nonEmpty(sub.hunger,    "hunger");
+            String onName     = nonEmpty(sub.hungerOn,  "on");
+            String offName    = nonEmpty(sub.hungerOff, "off");
+
+            // Validate messages.yaml on registration so misconfigurations are logged early
+            MessageOutputSystem.validateAll(DragonsLegacyMod.configManager.getMessages());
+
+            // Build and register the root command
             dispatcher.register(
-                literal("dragonslegacy")
-                    .requires(Permissions.require(Perms.DRAGONSLEGACY, PermissionLevel.OWNERS))
+                literal(rootName)
+                    // ── Public subcommands ──────────────────────────────────
+                    .then(literal(helpName)
+                        .executes(DragonsLegacyCommands::help)
+                    )
+                    .then(literal(bearerName)
+                        .executes(DragonsLegacyCommands::bearer)
+                    )
+                    .then(literal(hungerName)
+                        .then(literal(onName)
+                            .executes(DragonsLegacyCommands::hungerOn)
+                        )
+                        .then(literal(offName)
+                            .executes(DragonsLegacyCommands::hungerOff)
+                        )
+                    )
+                    // ── Admin subcommands ───────────────────────────────────
                     .then(literal("info")
                         .requires(Permissions.require(Perms.DRAGONSLEGACY_INFO, PermissionLevel.OWNERS))
                         .executes(DragonsLegacyCommands::info)
@@ -81,9 +134,135 @@ public class DragonsLegacyCommands {
                         .requires(Permissions.require(Perms.DRAGONSLEGACY_RELOAD, PermissionLevel.OWNERS))
                         .executes(DragonsLegacyCommands::reload)
                     )
-            )
-        );
+            );
+
+            // Register aliases as Brigadier redirects
+            var rootNode = dispatcher.getRoot().getChild(rootName);
+            if (rootNode != null && cmds.rootAliases != null) {
+                for (String alias : cmds.rootAliases) {
+                    if (alias != null && !alias.isBlank() && !alias.equals(rootName)) {
+                        dispatcher.register(literal(alias).redirect(rootNode));
+                    }
+                }
+            }
+        });
     }
+
+    // =========================================================================
+    // Public subcommand handlers
+    // =========================================================================
+
+    // -------------------------------------------------------------------------
+    // /dragonslegacy help
+    // -------------------------------------------------------------------------
+
+    private static int help(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        MessagesConfig messages = DragonsLegacyMod.configManager.getMessages();
+        MessageOutputSystem.send(player, messages.help);
+        return 1;
+    }
+
+    // -------------------------------------------------------------------------
+    // /dragonslegacy bearer
+    // -------------------------------------------------------------------------
+
+    private static int bearer(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        DragonsLegacy legacy = DragonsLegacy.getInstance();
+        MessagesConfig messages = DragonsLegacyMod.configManager.getMessages();
+
+        if (legacy == null) {
+            player.sendSystemMessage(Component.literal("[Dragon's Legacy] System not initialised yet."));
+            return -1;
+        }
+
+        UUID bearerUUID = legacy.getEggTracker().getCurrentBearer();
+        if (bearerUUID == null) {
+            MessageOutputSystem.send(player, messages.bearerNone);
+        } else {
+            MessageOutputSystem.send(player, messages.bearerInfo);
+        }
+        return 1;
+    }
+
+    // -------------------------------------------------------------------------
+    // /dragonslegacy hunger on
+    // -------------------------------------------------------------------------
+
+    /**
+     * Activates Dragon's Hunger for the executing player.
+     *
+     * <p>Only the current bearer may run this command. Non-bearers receive the
+     * configurable {@code not_bearer} message.
+     */
+    private static int hungerOn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        DragonsLegacy legacy = DragonsLegacy.getInstance();
+        MessagesConfig messages = DragonsLegacyMod.configManager.getMessages();
+
+        if (legacy == null) {
+            player.sendSystemMessage(Component.literal("[Dragon's Legacy] System not initialised yet."));
+            return -1;
+        }
+
+        // Bearer-only enforcement
+        EggTracker tracker = legacy.getEggTracker();
+        UUID bearerUUID = tracker.getCurrentBearer();
+        if (bearerUUID == null || !player.getUUID().equals(bearerUUID)) {
+            MessageOutputSystem.send(player, messages.notBearer);
+            return 0;
+        }
+
+        // Activate the ability
+        AbilityEngine engine = legacy.getAbilityEngine();
+        engine.activateDragonHunger(player);
+
+        // Send activation message
+        MessageOutputSystem.send(player, messages.hungerActivate);
+        return 1;
+    }
+
+    // -------------------------------------------------------------------------
+    // /dragonslegacy hunger off
+    // -------------------------------------------------------------------------
+
+    /**
+     * Deactivates Dragon's Hunger for the executing player.
+     *
+     * <p>Only the current bearer may run this command. Non-bearers receive the
+     * configurable {@code not_bearer} message.
+     */
+    private static int hungerOff(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        DragonsLegacy legacy = DragonsLegacy.getInstance();
+        MessagesConfig messages = DragonsLegacyMod.configManager.getMessages();
+
+        if (legacy == null) {
+            player.sendSystemMessage(Component.literal("[Dragon's Legacy] System not initialised yet."));
+            return -1;
+        }
+
+        // Bearer-only enforcement
+        EggTracker tracker = legacy.getEggTracker();
+        UUID bearerUUID = tracker.getCurrentBearer();
+        if (bearerUUID == null || !player.getUUID().equals(bearerUUID)) {
+            MessageOutputSystem.send(player, messages.notBearer);
+            return 0;
+        }
+
+        // Deactivate the ability
+        AbilityEngine engine = legacy.getAbilityEngine();
+        engine.deactivateDragonHunger(player, "command");
+
+        // Send deactivation message
+        MessageOutputSystem.send(player, messages.hungerDeactivate);
+        return 1;
+    }
+
+    // =========================================================================
+    // Admin subcommand handlers
+    // =========================================================================
 
     // -------------------------------------------------------------------------
     // /dragonslegacy info
@@ -101,7 +280,6 @@ public class DragonsLegacyCommands {
         EggTracker tracker = legacy.getEggTracker();
         AbilityEngine ability = legacy.getAbilityEngine();
 
-        // Bearer
         UUID bearerUUID = tracker.getCurrentBearer();
         String bearerName;
         if (bearerUUID == null) {
@@ -113,7 +291,6 @@ public class DragonsLegacyCommands {
                 : bearerUUID.toString();
         }
 
-        // Egg state
         EggState eggState = tracker.getCurrentState();
         String stateName = switch (eggState) {
             case HELD_BY_PLAYER -> "held";
@@ -122,13 +299,11 @@ public class DragonsLegacyCommands {
             case UNKNOWN        -> "unknown";
         };
 
-        // Egg location (only meaningful when placed as a block)
         BlockPos placed = tracker.getPlacedLocation();
         String locationStr = (placed != null && eggState == EggState.PLACED_BLOCK)
             ? "x=" + placed.getX() + " y=" + placed.getY() + " z=" + placed.getZ()
             : "N/A";
 
-        // Ability
         AbilityState abilityState = ability.getState();
         AbilityTimers timers = ability.getTimers();
         String abilityStatusStr = switch (abilityState) {
@@ -171,16 +346,13 @@ public class DragonsLegacyCommands {
         MinecraftServer server = source.getServer();
         EggTracker tracker = legacy.getEggTracker();
 
-        // Remove the egg from its current tracked location before reassigning
         removeEggFromCurrentLocation(server, tracker);
 
-        // Give the egg to the target; drop at their feet if inventory is full
         boolean added = target.getInventory().add(Items.DRAGON_EGG.getDefaultInstance());
         if (!added) {
             target.drop(Items.DRAGON_EGG.getDefaultInstance(), false);
         }
 
-        // Update the tracker so events (bearer-changed, etc.) fire correctly
         tracker.updateEggHeld(target);
 
         String targetName = target.getGameProfile().name();
@@ -214,7 +386,6 @@ public class DragonsLegacyCommands {
             return 0;
         }
 
-        // If active, find the player and deactivate; this transitions state to COOLDOWN
         if (state == AbilityState.ACTIVE) {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if (ability.isActive(player)) {
@@ -224,31 +395,10 @@ public class DragonsLegacyCommands {
             }
         }
 
-        // Clear any remaining cooldown so the state returns to INACTIVE
         ability.resetCooldownIfNeeded();
 
         source.sendSuccess(
             () -> Component.literal("[Dragon's Legacy] Dragon's Hunger ability cleared."),
-            true
-        );
-        return 1;
-    }
-
-    // -------------------------------------------------------------------------
-    // /dragonslegacy reload
-    // -------------------------------------------------------------------------
-
-    private static int reload(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        DragonsLegacy legacy = DragonsLegacy.getInstance();
-        if (legacy == null) {
-            source.sendFailure(Component.literal("[Dragon's Legacy] System not initialised yet."));
-            return -1;
-        }
-
-        legacy.reload(source.getServer());
-        source.sendSuccess(
-            () -> Component.literal("[Dragon's Legacy] Configuration reloaded successfully."),
             true
         );
         return 1;
@@ -281,15 +431,42 @@ public class DragonsLegacyCommands {
     }
 
     // -------------------------------------------------------------------------
-    // Private helpers
+    // /dragonslegacy reload
     // -------------------------------------------------------------------------
 
+    private static int reload(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        DragonsLegacy legacy = DragonsLegacy.getInstance();
+        if (legacy == null) {
+            source.sendFailure(Component.literal("[Dragon's Legacy] System not initialised yet."));
+            return -1;
+        }
+
+        legacy.reload(source.getServer());
+        dev.dragonslegacy.features.Actions.register();
+        dev.dragonslegacy.api.DragonEggAPI.init();
+        source.sendSuccess(
+            () -> Component.literal("[Dragon's Legacy] Configuration reloaded successfully."),
+            true
+        );
+        return 1;
+    }
+
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
+
     /**
-     * Removes the Dragon Egg from its current tracked location so that reassigning
-     * the bearer via {@code /dragonslegacy setbearer} does not create duplicates.
-     *
-     * @param server  the running {@link MinecraftServer}
-     * @param tracker the current {@link EggTracker}
+     * Returns {@code value} if it is non-null and non-blank, otherwise returns
+     * {@code fallback}.
+     */
+    private static String nonEmpty(String value, String fallback) {
+        return (value != null && !value.isBlank()) ? value : fallback;
+    }
+
+    /**
+     * Removes the Dragon Egg from its currently tracked location to avoid
+     * duplicates when force-assigning a bearer via {@code /dragonslegacy setbearer}.
      */
     private static void removeEggFromCurrentLocation(MinecraftServer server, EggTracker tracker) {
         switch (tracker.getCurrentState()) {
@@ -329,20 +506,15 @@ public class DragonsLegacyCommands {
     }
 
     /**
-     * Removes one Dragon Egg stack from the player's inventory
-     * (main slots, armour slots, and offhand).
-     *
-     * @param player the {@link ServerPlayer} whose inventory should be cleared
+     * Removes one Dragon Egg stack from the player's inventory (main, armour, and offhand).
      */
     private static void removeEggFromInventory(ServerPlayer player) {
-        // Check main inventory slots
         for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (stack.is(Items.DRAGON_EGG)) {
                 stack.shrink(stack.getCount());
                 return;
             }
         }
-        // Check armor and offhand equipment slots
         for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
             ItemStack stack = player.getItemBySlot(slot);
             if (stack.is(Items.DRAGON_EGG)) {
@@ -363,3 +535,4 @@ public class DragonsLegacyCommands {
             .append(Component.literal(value).withStyle(ChatFormatting.WHITE));
     }
 }
+

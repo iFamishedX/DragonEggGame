@@ -12,7 +12,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -182,8 +181,12 @@ public class EggEventHandler {
      * Registers hooks that drive the {@link AbilityEngine}:
      * <ul>
      *   <li>Bearer change → reset cooldown / deactivate old bearer</li>
-     *   <li>Equipment change → activate when dragon head equipped, deactivate when removed</li>
      * </ul>
+     *
+     * <p>Dragon's Hunger is now activated and deactivated exclusively via the
+     * {@code /dragonslegacy hunger on} and {@code /dragonslegacy hunger off} commands.
+     * The equipment-change hook that previously triggered activation by wearing a
+     * dragon head has been fully removed.
      */
     private static void registerAbilityHooks() {
         // Subscribe to bearer-changed events on the event bus (registered after SERVER_STARTED)
@@ -216,30 +219,5 @@ public class EggEventHandler {
                 }
             });
         });
-
-        // Equipment change: activate when dragon head is worn, deactivate when removed
-        net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.EQUIPMENT_CHANGE.register(
-            (livingEntity, slot, previousStack, currentStack) -> {
-                if (slot != EquipmentSlot.HEAD) return;
-                if (!(livingEntity instanceof ServerPlayer player)) return;
-
-                DragonsLegacy legacy = DragonsLegacy.getInstance();
-                if (legacy == null) return;
-
-                AbilityEngine engine = legacy.getAbilityEngine();
-                EggTracker tracker   = legacy.getEggTracker();
-
-                boolean isBearer = player.getUUID().equals(tracker.getCurrentBearer());
-
-                boolean nowWearingDragonHead  = currentStack.is(Items.DRAGON_HEAD);
-                boolean wasWearingDragonHead  = previousStack.is(Items.DRAGON_HEAD);
-
-                if (nowWearingDragonHead && isBearer) {
-                    engine.activateDragonHunger(player);
-                } else if (wasWearingDragonHead && !nowWearingDragonHead) {
-                    engine.deactivateDragonHunger(player, "head_removed");
-                }
-            }
-        );
     }
 }
