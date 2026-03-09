@@ -17,6 +17,9 @@ import java.util.Map;
 @ConfigSerializable
 public class UnifiedConfig {
 
+    @Setting("config_version")
+    public int configVersion = 1;
+
     public EggSection egg = new EggSection();
     public AbilitySection ability = new AbilitySection();
     public PassiveSection passive = new PassiveSection();
@@ -47,6 +50,8 @@ public class UnifiedConfig {
 
         public Map<PositionType, VisibilityType> visibility = buildDefaultVisibility();
 
+        public ProtectionSection protection = new ProtectionSection();
+
         private static Map<PositionType, VisibilityType> buildDefaultVisibility() {
             Map<PositionType, VisibilityType> map = new LinkedHashMap<>();
             map.put(PositionType.INVENTORY,     VisibilityType.EXACT);
@@ -57,13 +62,27 @@ public class UnifiedConfig {
             map.put(PositionType.ENTITY,        VisibilityType.EXACT);
             return map;
         }
+
+        /** Anti-loss protection settings for the Dragon Egg. */
+        @ConfigSerializable
+        public static class ProtectionSection {
+            @Setting("void")
+            public boolean voidProtection = true;
+            public boolean fire = true;
+            public boolean lava = true;
+            public boolean explosions = true;
+            public boolean cactus = true;
+            public boolean despawn = true;
+            public boolean hopper = true;
+            public boolean portal = true;
+        }
     }
 
     // -------------------------------------------------------------------------
     // Ability section
     // -------------------------------------------------------------------------
 
-    /** Settings for Dragon's Hunger: duration, cooldown, elytra blocking, active effects and attributes. */
+    /** Settings for Dragon's Hunger: duration, cooldown, elytra blocking, scaling, active effects and attributes. */
     @ConfigSerializable
     public static class AbilitySection {
 
@@ -75,6 +94,8 @@ public class UnifiedConfig {
 
         @Setting("block_elytra")
         public boolean blockElytra = true;
+
+        public ScalingSection scaling = new ScalingSection();
 
         public List<EffectEntry> effects = buildDefaultEffects();
         public List<AttributeEntry> attributes = buildDefaultAttributes();
@@ -110,18 +131,48 @@ public class UnifiedConfig {
             list.add(damage);
             return list;
         }
+
+        /** Scaling multipliers based on server population or other metrics. */
+        @ConfigSerializable
+        public static class ScalingSection {
+            public boolean enabled = false;
+
+            @Setting("health_multiplier")
+            public double healthMultiplier = 0.0;
+
+            @Setting("damage_multiplier")
+            public double damageMultiplier = 0.0;
+
+            @Setting("speed_multiplier")
+            public double speedMultiplier = 0.0;
+        }
     }
 
     // -------------------------------------------------------------------------
     // Passive section
     // -------------------------------------------------------------------------
 
-    /** Passive effects and attribute modifiers always applied while the bearer holds the egg. */
+    /** Passive effects, attribute modifiers, and glow settings always applied while the bearer holds the egg. */
     @ConfigSerializable
     public static class PassiveSection {
 
         public List<EffectEntry> effects = buildDefaultEffects();
         public List<AttributeEntry> attributes = buildDefaultAttributes();
+        public GlowSection glow = new GlowSection();
+
+        /** Glow effect settings for the Dragon Egg bearer. */
+        @ConfigSerializable
+        public static class GlowSection {
+            public boolean enabled = true;
+            public String color = "#AA00FF";
+            public CraftingSection crafting = new CraftingSection();
+
+            @ConfigSerializable
+            public static class CraftingSection {
+                public boolean enabled = true;
+                public String recipe = "anvil";
+            }
+        }
 
         private static List<EffectEntry> buildDefaultEffects() {
             List<EffectEntry> list = new ArrayList<>();
@@ -174,6 +225,10 @@ public class UnifiedConfig {
 
             @Setting("hunger_off")
             public String hungerOff = "off";
+
+            public String reload = "reload";
+            public String test = "test";
+            public String placeholders = "placeholders";
         }
     }
 }

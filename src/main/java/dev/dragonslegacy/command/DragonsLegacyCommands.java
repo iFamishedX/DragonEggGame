@@ -83,12 +83,15 @@ public class DragonsLegacyCommands {
                 cmds.subcommands != null ? cmds.subcommands : new CommandsConfig.SubcommandNames();
 
             // Resolve subcommand names (fall back to defaults if blank)
-            String rootName   = nonEmpty(cmds.rootCommand, "dragonslegacy");
-            String helpName   = nonEmpty(sub.help,      "help");
-            String bearerName = nonEmpty(sub.bearer,    "bearer");
-            String hungerName = nonEmpty(sub.hunger,    "hunger");
-            String onName     = nonEmpty(sub.hungerOn,  "on");
-            String offName    = nonEmpty(sub.hungerOff, "off");
+            String rootName        = nonEmpty(cmds.rootCommand, "dragonslegacy");
+            String helpName        = nonEmpty(sub.help,         "help");
+            String bearerName      = nonEmpty(sub.bearer,       "bearer");
+            String hungerName      = nonEmpty(sub.hunger,       "hunger");
+            String onName          = nonEmpty(sub.hungerOn,     "on");
+            String offName         = nonEmpty(sub.hungerOff,    "off");
+            String reloadName      = nonEmpty(sub.reload,       "reload");
+            String testName        = nonEmpty(sub.test,         "test");
+            String placeholdersName= nonEmpty(sub.placeholders, "placeholders");
 
             // Validate messages.yaml on registration so misconfigurations are logged early
             MessageOutputSystem.validateAll(DragonsLegacyMod.configManager.getMessages());
@@ -111,6 +114,19 @@ public class DragonsLegacyCommands {
                             .executes(DragonsLegacyCommands::hungerOff)
                         )
                     )
+                    .then(literal(reloadName)
+                        .requires(src -> Permissions.check(src, Perms.DRAGONSLEGACY_RELOAD, PermissionLevel.OWNERS))
+                        .executes(DragonsLegacyCommands::reload)
+                    )
+                    .then(literal(testName)
+                        .requires(src -> Permissions.check(src, Perms.ADMIN, PermissionLevel.ADMINS))
+                        .then(argument("message_key", com.mojang.brigadier.arguments.StringArgumentType.word())
+                            .executes(DragonsLegacyCommands::testMessage)
+                        )
+                    )
+                    .then(literal(placeholdersName)
+                        .executes(DragonsLegacyCommands::listPlaceholders)
+                    )
                     // ── Admin subcommands ───────────────────────────────────
                     .then(literal("info")
                         .requires(Permissions.require(Perms.DRAGONSLEGACY_INFO, PermissionLevel.OWNERS))
@@ -129,10 +145,6 @@ public class DragonsLegacyCommands {
                     .then(literal("resetcooldown")
                         .requires(Permissions.require(Perms.DRAGONSLEGACY_RESETCOOLDOWN, PermissionLevel.OWNERS))
                         .executes(DragonsLegacyCommands::resetCooldown)
-                    )
-                    .then(literal("reload")
-                        .requires(Permissions.require(Perms.DRAGONSLEGACY_RELOAD, PermissionLevel.OWNERS))
-                        .executes(DragonsLegacyCommands::reload)
                     )
             );
 
@@ -449,6 +461,83 @@ public class DragonsLegacyCommands {
             () -> Component.literal("[Dragon's Legacy] Configuration reloaded successfully."),
             true
         );
+        return 1;
+    }
+
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
+
+    // -------------------------------------------------------------------------
+    // /dragonslegacy test <message_key>
+    // -------------------------------------------------------------------------
+
+    private static int testMessage(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (CommandSyntaxException e) {
+            source.sendFailure(Component.literal("[Dragon's Legacy] This command must be run by a player."));
+            return -1;
+        }
+        String key = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "message_key");
+        MessagesConfig messages = DragonsLegacyMod.configManager.getMessages();
+        MessagesConfig.MessageEntry entry = messages.getEntry(key);
+        MessageOutputSystem.send(player, entry);
+        return 1;
+    }
+
+    // -------------------------------------------------------------------------
+    // /dragonslegacy placeholders
+    // -------------------------------------------------------------------------
+
+    private static int listPlaceholders(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (CommandSyntaxException e) {
+            source.sendFailure(Component.literal("[Dragon's Legacy] This command must be run by a player."));
+            return -1;
+        }
+        DragonsLegacy legacy = DragonsLegacy.getInstance();
+        EggTracker tracker = (legacy != null) ? legacy.getEggTracker() : null;
+        dev.dragonslegacy.ability.AbilityEngine ability = (legacy != null) ? legacy.getAbilityEngine() : null;
+
+        String bearer = "none";
+        String eggState = "unknown";
+        if (tracker != null) {
+            UUID bearerUUID = tracker.getCurrentBearer();
+            if (bearerUUID != null) {
+                ServerPlayer bp = DragonsLegacyMod.server != null
+                    ? DragonsLegacyMod.server.getPlayerList().getPlayer(bearerUUID) : null;
+                bearer = bp != null ? bp.getGameProfile().name() : bearerUUID.toString();
+            }
+            eggState = tracker.getCurrentState().name().toLowerCase(java.util.Locale.ROOT);
+        }
+        String abilityDuration = ability != null
+            ? String.valueOf(ability.getTimers().getDurationRemaining()) : "0";
+        String abilityCooldown = ability != null
+            ? String.valueOf(ability.getTimers().getCooldownRemaining()) : "0";
+        int online = DragonsLegacyMod.server != null
+            ? DragonsLegacyMod.server.getPlayerList().getPlayerCount() : 0;
+        int maxPlayers = DragonsLegacyMod.server != null
+            ? DragonsLegacyMod.server.getPlayerList().getMaxPlayers() : 0;
+
+        MutableComponent msg = Component.empty()
+            .append(Component.literal("[Dragon's Legacy] Placeholder values:\n").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal("  %dragonslegacy:player%           = " + player.getGameProfile().name() + "\n"))
+            .append(Component.literal("  %dragonslegacy:executor%         = " + player.getGameProfile().name() + "\n"))
+            .append(Component.literal("  %dragonslegacy:executor_uuid%    = " + player.getUUID() + "\n"))
+            .append(Component.literal("  %dragonslegacy:bearer%           = " + bearer + "\n"))
+            .append(Component.literal("  %dragonslegacy:egg_item%         = Dragon Egg\n"))
+            .append(Component.literal("  %dragonslegacy:egg_state%        = " + eggState + "\n"))
+            .append(Component.literal("  %dragonslegacy:ability_duration% = " + abilityDuration + "\n"))
+            .append(Component.literal("  %dragonslegacy:ability_cooldown% = " + abilityCooldown + "\n"))
+            .append(Component.literal("  %dragonslegacy:online%           = " + online + "\n"))
+            .append(Component.literal("  %dragonslegacy:max_players%      = " + maxPlayers + "\n"));
+        source.sendSuccess(() -> msg, false);
         return 1;
     }
 

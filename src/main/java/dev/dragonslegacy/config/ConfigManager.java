@@ -131,11 +131,14 @@ public class ConfigManager {
             if (cmd.root    != null) c.rootCommand  = cmd.root;
             if (cmd.aliases != null) c.rootAliases  = cmd.aliases;
             if (cmd.subcommands != null) {
-                c.subcommands.help     = cmd.subcommands.help;
-                c.subcommands.bearer   = cmd.subcommands.bearer;
-                c.subcommands.hunger   = cmd.subcommands.hunger;
-                c.subcommands.hungerOn = cmd.subcommands.hungerOn;
-                c.subcommands.hungerOff= cmd.subcommands.hungerOff;
+                c.subcommands.help        = cmd.subcommands.help;
+                c.subcommands.bearer      = cmd.subcommands.bearer;
+                c.subcommands.hunger      = cmd.subcommands.hunger;
+                c.subcommands.hungerOn    = cmd.subcommands.hungerOn;
+                c.subcommands.hungerOff   = cmd.subcommands.hungerOff;
+                c.subcommands.reload      = cmd.subcommands.reload;
+                c.subcommands.test        = cmd.subcommands.test;
+                c.subcommands.placeholders= cmd.subcommands.placeholders;
             }
         }
         return c;
@@ -168,9 +171,9 @@ public class ConfigManager {
     // -------------------------------------------------------------------------
 
     private void addTemplate(Map<String, String> templates, String oldKey, String newKey) {
-        MessageString ms = (messages.text != null) ? messages.text.get(newKey) : null;
-        if (ms != null) {
-            templates.put(oldKey, ms.value);
+        MessagesConfig.MessageConfig cfg = (messages.messages != null) ? messages.messages.get(newKey) : null;
+        if (cfg != null && cfg.channels != null && !cfg.channels.isEmpty()) {
+            templates.put(oldKey, cfg.channels.get(0).text != null ? cfg.channels.get(0).text : "");
         } else {
             templates.put(oldKey, AnnouncementsConfig.defaults().getOrDefault(oldKey, ""));
         }

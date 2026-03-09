@@ -49,5 +49,14 @@ public class CommandsConfig {
         @Comment("Name of the subcommand that deactivates Dragon's Hunger.")
         @Setting("hunger_off")
         public String hungerOff = "off";
+
+        @Comment("Name of the subcommand that reloads all configuration files.")
+        public String reload = "reload";
+
+        @Comment("Name of the subcommand that sends a test message to the executor.")
+        public String test = "test";
+
+        @Comment("Name of the subcommand that lists all placeholder values.")
+        public String placeholders = "placeholders";
     }
 }
