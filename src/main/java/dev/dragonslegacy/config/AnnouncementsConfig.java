@@ -56,7 +56,7 @@ public class AnnouncementsConfig {
         map.put("egg_placed",               "<gold>[Dragon's Legacy]</gold> <white>The Dragon's Egg has been placed at <x>, <y>, <z>!</white>");
         map.put("bearer_changed",           "<gold>[Dragon's Legacy]</gold> <white>The Dragon's Egg is now held by <player>!</white>");
         map.put("bearer_cleared",           "<gold>[Dragon's Legacy]</gold> <white>The Dragon's Egg has no bearer.</white>");
-        map.put("egg_teleported_to_spawn",  "<gold>[Dragon's Legacy]</gold> <white>The Dragon's Egg has been returned to spawn at <x>, <y>, <z>!</white>");
+        map.put("egg_teleported",           "<gold>[Dragon's Legacy]</gold> <white>The Dragon's Egg has been returned to spawn at <x>, <y>, <z>!</white>");
         map.put("ability_activated",        "<gold>[Dragon's Legacy]</gold> <white><player> has activated Dragon's Hunger for <seconds> seconds!</white>");
         map.put("ability_expired",          "<gold>[Dragon's Legacy]</gold> <white>Dragon's Hunger has expired for <player>!</white>");
         map.put("ability_cooldown_started", "<gold>[Dragon's Legacy]</gold> <white>Dragon's Hunger is on cooldown for <seconds> seconds.</white>");

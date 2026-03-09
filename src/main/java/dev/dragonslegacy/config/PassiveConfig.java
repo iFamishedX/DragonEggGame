@@ -24,13 +24,13 @@ public class PassiveConfig {
         List<EffectEntry> list = new ArrayList<>();
         EffectEntry resistance = new EffectEntry();
         resistance.id = "minecraft:resistance";
-        resistance.amplifier = 0;
+        resistance.level = 1;
         resistance.showParticles = false;
         resistance.showIcon = false;
         list.add(resistance);
         EffectEntry saturation = new EffectEntry();
         saturation.id = "minecraft:saturation";
-        saturation.amplifier = 0;
+        saturation.level = 1;
         saturation.showParticles = false;
         saturation.showIcon = false;
         list.add(saturation);

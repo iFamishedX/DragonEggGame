@@ -214,7 +214,7 @@ public class AbilityEngine {
                 DragonHungerAbility.remove(player);
                 // Notify the bearer that the ability has expired
                 MessagesConfig msgs = DragonsLegacyMod.configManager.getMessages();
-                MessageOutputSystem.send(player, msgs.getEntry("hunger_expired"));
+                MessageOutputSystem.send(player, msgs.getEntry("ability_expired"));
             }
         }
 

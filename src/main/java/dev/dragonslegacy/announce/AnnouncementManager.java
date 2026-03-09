@@ -182,7 +182,7 @@ public class AnnouncementManager {
         ph.put("x", String.valueOf((int) event.getSpawnPosition().x));
         ph.put("y", String.valueOf((int) event.getSpawnPosition().y));
         ph.put("z", String.valueOf((int) event.getSpawnPosition().z));
-        broadcastMiniMessage(getTemplate("egg_teleported_to_spawn"), ph);
+        broadcastMiniMessage(getTemplate("egg_teleported"), ph);
     }
 
     // -------------------------------------------------------------------------

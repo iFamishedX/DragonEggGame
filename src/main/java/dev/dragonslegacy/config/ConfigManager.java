@@ -21,24 +21,24 @@ import java.util.Map;
  *
  * <h3>Files managed</h3>
  * <ul>
- *   <li>{@code config.yaml}   – master on/off switch and config version</li>
- *   <li>{@code egg.yaml}      – egg behavior, visibility, and protection settings</li>
- *   <li>{@code ability.yaml}  – Dragon's Hunger ability settings</li>
- *   <li>{@code passive.yaml}  – passive effects and attributes</li>
- *   <li>{@code glow.yaml}     – glow system settings</li>
- *   <li>{@code commands.yaml} – command names and aliases</li>
- *   <li>{@code messages.yaml} – all text output, output modes, and announcements</li>
+ *   <li>{@code global.yaml}    – permissions API toggle, command names/aliases, per-command permission nodes</li>
+ *   <li>{@code egg.yaml}       – egg behavior, visibility, and protection settings</li>
+ *   <li>{@code ability.yaml}   – Dragon's Hunger ability settings</li>
+ *   <li>{@code passive.yaml}   – passive effects and attributes</li>
+ *   <li>{@code infusion.yaml}  – infusion color and anvil material settings</li>
+ *   <li>{@code messages.yaml}  – all text output, output modes, and announcements</li>
+ *   <li>{@code logging.yaml}   – which log categories go to console / ops</li>
  * </ul>
  */
 public class ConfigManager {
 
-    private CoreConfig         coreConfig     = new CoreConfig();
-    private EggConfig          eggConfig      = new EggConfig();
-    private AbilityFileConfig  abilityFile    = new AbilityFileConfig();
-    private PassiveConfig      passiveConfig  = new PassiveConfig();
-    private GlowConfig         glowConfig     = new GlowConfig();
-    private CommandsFileConfig commandsFile   = new CommandsFileConfig();
-    private MessagesConfig     messages       = new MessagesConfig();
+    private GlobalConfig        globalConfig   = new GlobalConfig();
+    private EggConfig           eggConfig      = new EggConfig();
+    private AbilityFileConfig   abilityFile    = new AbilityFileConfig();
+    private PassiveConfig       passiveConfig  = new PassiveConfig();
+    private InfusionConfig      infusionConfig = new InfusionConfig();
+    private MessagesConfig      messages       = new MessagesConfig();
+    private LoggingConfig       loggingConfig  = new LoggingConfig();
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -53,26 +53,26 @@ public class ConfigManager {
         } catch (IOException e) {
             DragonsLegacyMod.LOGGER.warn("[Dragon's Legacy] Could not create config directory.", e);
         }
-        coreConfig    = loadOrCreate("config.yaml",   CoreConfig.class,        new CoreConfig());
-        eggConfig     = loadOrCreate("egg.yaml",       EggConfig.class,         new EggConfig());
-        abilityFile   = loadOrCreate("ability.yaml",   AbilityFileConfig.class, new AbilityFileConfig());
-        passiveConfig = loadOrCreate("passive.yaml",   PassiveConfig.class,     new PassiveConfig());
-        glowConfig    = loadOrCreate("glow.yaml",      GlowConfig.class,        new GlowConfig());
-        commandsFile  = loadOrCreate("commands.yaml",  CommandsFileConfig.class,new CommandsFileConfig());
-        messages      = loadOrCreate("messages.yaml",  MessagesConfig.class,    new MessagesConfig());
+        globalConfig   = loadOrCreate("global.yaml",   GlobalConfig.class,       new GlobalConfig());
+        eggConfig      = loadOrCreate("egg.yaml",       EggConfig.class,          new EggConfig());
+        abilityFile    = loadOrCreate("ability.yaml",   AbilityFileConfig.class,  new AbilityFileConfig());
+        passiveConfig  = loadOrCreate("passive.yaml",   PassiveConfig.class,      new PassiveConfig());
+        infusionConfig = loadOrCreate("infusion.yaml",  InfusionConfig.class,     new InfusionConfig());
+        messages       = loadOrCreate("messages.yaml",  MessagesConfig.class,     new MessagesConfig());
+        loggingConfig  = loadOrCreate("logging.yaml",   LoggingConfig.class,      new LoggingConfig());
     }
 
     /**
      * Re-reads all YAML files from disk.
      */
     public void reload() {
-        coreConfig    = reload("config.yaml",   CoreConfig.class,        coreConfig);
-        eggConfig     = reload("egg.yaml",       EggConfig.class,         eggConfig);
-        abilityFile   = reload("ability.yaml",   AbilityFileConfig.class, abilityFile);
-        passiveConfig = reload("passive.yaml",   PassiveConfig.class,     passiveConfig);
-        glowConfig    = reload("glow.yaml",      GlowConfig.class,        glowConfig);
-        commandsFile  = reload("commands.yaml",  CommandsFileConfig.class,commandsFile);
-        messages      = reload("messages.yaml",  MessagesConfig.class,    messages);
+        globalConfig   = reload("global.yaml",   GlobalConfig.class,       globalConfig);
+        eggConfig      = reload("egg.yaml",       EggConfig.class,          eggConfig);
+        abilityFile    = reload("ability.yaml",   AbilityFileConfig.class,  abilityFile);
+        passiveConfig  = reload("passive.yaml",   PassiveConfig.class,      passiveConfig);
+        infusionConfig = reload("infusion.yaml",  InfusionConfig.class,     infusionConfig);
+        messages       = reload("messages.yaml",  MessagesConfig.class,     messages);
+        loggingConfig  = reload("logging.yaml",   LoggingConfig.class,      loggingConfig);
         DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] All configuration files reloaded.");
     }
 
@@ -80,24 +80,13 @@ public class ConfigManager {
     // Primary getters (new API)
     // -------------------------------------------------------------------------
 
-    public CoreConfig         getCore()         { return coreConfig; }
-    public EggConfig          getEggConfig()    { return eggConfig; }
-    public AbilityFileConfig  getAbilityFile()  { return abilityFile; }
-    public PassiveConfig      getPassiveConfig(){ return passiveConfig; }
-    public GlowConfig         getGlow()         { return glowConfig; }
-    public CommandsFileConfig getCommandsFile() { return commandsFile; }
-    public MessagesConfig     getMessages()     { return messages; }
-
-    /** @deprecated Use {@link #getCore()} for the enabled flag. Builds a synthetic UnifiedConfig. */
-    @Deprecated
-    public UnifiedConfig getUnified() {
-        UnifiedConfig u = new UnifiedConfig();
-        u.egg      = toEggSection();
-        u.ability  = toAbilitySection();
-        u.passive  = toPassiveSection();
-        u.commands = toCommandsSection();
-        return u;
-    }
+    public GlobalConfig        getGlobal()         { return globalConfig; }
+    public EggConfig           getEggConfig()      { return eggConfig; }
+    public AbilityFileConfig   getAbilityFile()    { return abilityFile; }
+    public PassiveConfig       getPassiveConfig()  { return passiveConfig; }
+    public InfusionConfig      getInfusion()       { return infusionConfig; }
+    public MessagesConfig      getMessages()       { return messages; }
+    public LoggingConfig       getLogging()        { return loggingConfig; }
 
     // -------------------------------------------------------------------------
     // Adapter getters (backward-compatible with legacy code)
@@ -111,7 +100,6 @@ public class ConfigManager {
         m.searchRadius        = eggConfig.searchRadius;
         m.blockEnderChest     = eggConfig.blockEnderChest;
         m.blockContainerItems = eggConfig.blockContainerItems;
-        m.offlineResetDays    = eggConfig.offlineResetDays;
         m.nearbyRange         = eggConfig.nearbyRange;
         if (eggConfig.visibility != null) m.visibility = eggConfig.visibility;
         return m;
@@ -150,21 +138,15 @@ public class ConfigManager {
     }
 
     /**
-     * Returns a {@link CommandsConfig} built from commands.yaml.
+     * Returns a {@link CommandsConfig} built from global.yaml.
+     * The {@code actions} list is always empty (actions are not configurable via this file).
      */
     public CommandsConfig getCommands() {
         CommandsConfig c = new CommandsConfig();
-        if (commandsFile.root    != null) c.rootCommand = commandsFile.root;
-        if (commandsFile.aliases != null) c.rootAliases = commandsFile.aliases;
-        if (commandsFile.subcommands != null) {
-            c.subcommands.help         = commandsFile.subcommands.help;
-            c.subcommands.bearer       = commandsFile.subcommands.bearer;
-            c.subcommands.hunger       = commandsFile.subcommands.hunger;
-            c.subcommands.hungerOn     = commandsFile.subcommands.hungerOn;
-            c.subcommands.hungerOff    = commandsFile.subcommands.hungerOff;
-            c.subcommands.reload       = commandsFile.subcommands.reload;
-            c.subcommands.test         = commandsFile.subcommands.test;
-            c.subcommands.placeholders = commandsFile.subcommands.placeholders;
+        GlobalConfig.CommandsSection cmds = globalConfig.commands;
+        if (cmds != null) {
+            if (cmds.root    != null) c.rootCommand = cmds.root;
+            if (cmds.aliases != null) c.rootAliases = new ArrayList<>(cmds.aliases);
         }
         return c;
     }
@@ -177,16 +159,16 @@ public class ConfigManager {
         AnnouncementsConfig a = new AnnouncementsConfig();
         a.useMiniMessage = true;
         Map<String, String> templates = new LinkedHashMap<>();
-        addTemplate(templates, "egg_picked_up",            "announcement_egg_picked_up");
-        addTemplate(templates, "egg_dropped",              "announcement_egg_dropped");
-        addTemplate(templates, "egg_placed",               "announcement_egg_placed");
-        addTemplate(templates, "bearer_changed",           "announcement_bearer_changed");
-        addTemplate(templates, "bearer_cleared",           "announcement_bearer_cleared");
-        addTemplate(templates, "egg_teleported_to_spawn",  "announcement_egg_teleported");
-        addTemplate(templates, "ability_activated",        "announcement_ability_activated");
-        addTemplate(templates, "ability_expired",          "announcement_ability_expired");
-        addTemplate(templates, "ability_cooldown_started", "announcement_ability_cooldown_started");
-        addTemplate(templates, "ability_cooldown_ended",   "announcement_ability_cooldown_ended");
+        addTemplate(templates, "egg_picked_up",           "egg_picked_up");
+        addTemplate(templates, "egg_dropped",             "egg_dropped");
+        addTemplate(templates, "egg_placed",              "egg_placed");
+        addTemplate(templates, "bearer_changed",          "bearer_changed");
+        addTemplate(templates, "bearer_cleared",          "bearer_cleared");
+        addTemplate(templates, "egg_teleported_to_spawn", "egg_teleported");
+        addTemplate(templates, "ability_activated",       "ability_activated");
+        addTemplate(templates, "ability_expired",         "ability_expired");
+        addTemplate(templates, "ability_cooldown_started","ability_cooldown_started");
+        addTemplate(templates, "ability_cooldown_ended",  "ability_cooldown_ended");
         a.templates = templates;
         return a;
     }
@@ -195,58 +177,13 @@ public class ConfigManager {
     // Private helpers
     // -------------------------------------------------------------------------
 
-    private void addTemplate(Map<String, String> templates, String oldKey, String newKey) {
-        MessagesConfig.MessageConfig cfg = (messages.messages != null) ? messages.messages.get(newKey) : null;
+    private void addTemplate(Map<String, String> templates, String templateKey, String messageKey) {
+        MessagesConfig.MessageConfig cfg = (messages.messages != null) ? messages.messages.get(messageKey) : null;
         if (cfg != null && cfg.channels != null && !cfg.channels.isEmpty()) {
-            templates.put(oldKey, cfg.channels.get(0).text != null ? cfg.channels.get(0).text : "");
+            templates.put(templateKey, cfg.channels.get(0).text != null ? cfg.channels.get(0).text : "");
         } else {
-            templates.put(oldKey, AnnouncementsConfig.defaults().getOrDefault(oldKey, ""));
+            templates.put(templateKey, AnnouncementsConfig.defaults().getOrDefault(templateKey, ""));
         }
-    }
-
-    private UnifiedConfig.EggSection toEggSection() {
-        UnifiedConfig.EggSection s = new UnifiedConfig.EggSection();
-        s.searchRadius        = eggConfig.searchRadius;
-        s.blockEnderChest     = eggConfig.blockEnderChest;
-        s.blockContainerItems = eggConfig.blockContainerItems;
-        s.offlineResetDays    = eggConfig.offlineResetDays;
-        s.nearbyRange         = eggConfig.nearbyRange;
-        if (eggConfig.visibility != null) s.visibility = eggConfig.visibility;
-        return s;
-    }
-
-    private UnifiedConfig.AbilitySection toAbilitySection() {
-        UnifiedConfig.AbilitySection s = new UnifiedConfig.AbilitySection();
-        s.durationTicks = abilityFile.durationTicks;
-        s.cooldownTicks = abilityFile.cooldownTicks;
-        s.blockElytra   = abilityFile.blockElytra;
-        if (abilityFile.effects    != null) s.effects    = abilityFile.effects;
-        if (abilityFile.attributes != null) s.attributes = abilityFile.attributes;
-        return s;
-    }
-
-    private UnifiedConfig.PassiveSection toPassiveSection() {
-        UnifiedConfig.PassiveSection s = new UnifiedConfig.PassiveSection();
-        if (passiveConfig.effects    != null) s.effects    = passiveConfig.effects;
-        if (passiveConfig.attributes != null) s.attributes = passiveConfig.attributes;
-        return s;
-    }
-
-    private UnifiedConfig.CommandsSection toCommandsSection() {
-        UnifiedConfig.CommandsSection s = new UnifiedConfig.CommandsSection();
-        if (commandsFile.root    != null) s.root    = commandsFile.root;
-        if (commandsFile.aliases != null) s.aliases = new ArrayList<>(commandsFile.aliases);
-        if (commandsFile.subcommands != null) {
-            s.subcommands.help         = commandsFile.subcommands.help;
-            s.subcommands.bearer       = commandsFile.subcommands.bearer;
-            s.subcommands.hunger       = commandsFile.subcommands.hunger;
-            s.subcommands.hungerOn     = commandsFile.subcommands.hungerOn;
-            s.subcommands.hungerOff    = commandsFile.subcommands.hungerOff;
-            s.subcommands.reload       = commandsFile.subcommands.reload;
-            s.subcommands.test         = commandsFile.subcommands.test;
-            s.subcommands.placeholders = commandsFile.subcommands.placeholders;
-        }
-        return s;
     }
 
     private <T> T loadOrCreate(String fileName, Class<T> type, T defaults) {

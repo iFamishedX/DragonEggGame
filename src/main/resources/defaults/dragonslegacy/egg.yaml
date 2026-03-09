@@ -1,18 +1,29 @@
 config_version: 1
 
+# search_radius:
+#   [Restart]
+#   How far the mod searches around the last known egg location
+#   when the egg is lost or its exact position is unknown.
+#
+# nearby_range:
+#   [Reload]
+#   How close a player must be to be considered "near" the egg
+#   for tracking, announcements, or effects.
+
 search_radius: 25
-block_ender_chest: true
-block_container_items: false
-offline_reset_days: 3
 nearby_range: 64
 
+# Prevent the Dragon Egg (ONLY the egg) from being placed into containers.
+block_ender_chest: true
+block_container_items: true
+
 visibility:
-  INVENTORY: "EXACT"
-  ITEM: "EXACT"
-  PLAYER: "HIDDEN"
-  BLOCK: "RANDOMIZED"
-  FALLING_BLOCK: "EXACT"
-  ENTITY: "EXACT"
+  INVENTORY: EXACT
+  ITEM: EXACT
+  PLAYER: HIDDEN
+  BLOCK: RANDOMIZED
+  FALLING_BLOCK: EXACT
+  ENTITY: EXACT
 
 protection:
   void: true

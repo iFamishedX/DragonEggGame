@@ -36,10 +36,6 @@ public class MainConfig {
     @Setting("nearby_range")
     public int nearbyRange = 64;
 
-    @Comment("Real-world days a bearer may be offline before the egg bearer designation is cleared. Default: 3.0")
-    @Setting("offline_reset_days")
-    public double offlineResetDays = 3.0;
-
     @Comment("""
         Visibility of the dragon egg for each position type.
         RANDOMIZED = randomized position shown, EXACT = exact position shown, HIDDEN = position hidden.

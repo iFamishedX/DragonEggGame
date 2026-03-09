@@ -18,6 +18,13 @@ public class Perms {
     public static final String EXACT_POS_PLACEHOLDER = child(PLACEHOLDERS, "exact_pos");
     public static final String RANDOMIZED_POS_PLACEHOLDER = child(PLACEHOLDERS, "randomized_pos");
 
+    // dragonslegacy.command.* permission nodes (used by global.yaml when permissions_api = true)
+    public static final String COMMAND_HELP         = "dragonslegacy.command.help";
+    public static final String COMMAND_BEARER       = "dragonslegacy.command.bearer";
+    public static final String COMMAND_HUNGER       = "dragonslegacy.command.hunger";
+    public static final String COMMAND_RELOAD       = "dragonslegacy.command.reload";
+    public static final String COMMAND_PLACEHOLDERS = "dragonslegacy.command.placeholders";
+
     public static String child(String node, String childName) {
         return node + "." + childName;
     }

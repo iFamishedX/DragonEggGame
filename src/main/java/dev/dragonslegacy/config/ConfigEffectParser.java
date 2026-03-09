@@ -76,6 +76,8 @@ public final class ConfigEffectParser {
      * @return a new {@link MobEffectInstance}
      */
     public static MobEffectInstance createInstance(Holder<MobEffect> effect, EffectEntry entry, int duration) {
-        return new MobEffectInstance(effect, duration, entry.amplifier, false, entry.showParticles, entry.showIcon);
+        // level is 1-based: level 1 = amplifier 0, level 2 = amplifier 1, etc.
+        int amplifier = Math.max(0, entry.level - 1);
+        return new MobEffectInstance(effect, duration, amplifier, false, entry.showParticles, entry.showIcon);
     }
 }

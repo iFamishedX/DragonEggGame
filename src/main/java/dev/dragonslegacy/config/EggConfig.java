@@ -23,10 +23,7 @@ public class EggConfig {
     public boolean blockEnderChest = true;
 
     @Setting("block_container_items")
-    public boolean blockContainerItems = false;
-
-    @Setting("offline_reset_days")
-    public double offlineResetDays = 3.0;
+    public boolean blockContainerItems = true;
 
     @Setting("nearby_range")
     public int nearbyRange = 64;
