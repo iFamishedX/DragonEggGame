@@ -219,5 +219,7 @@ public final class MessageOutputSystem {
         validateEntry("hunger_activate",  cfg.hungerActivate);
         validateEntry("hunger_deactivate", cfg.hungerDeactivate);
         validateEntry("not_bearer",       cfg.notBearer);
+        validateEntry("hunger_expired",   cfg.hungerExpired);
+        validateEntry("elytra_blocked",   cfg.elytraBlocked);
     }
 }

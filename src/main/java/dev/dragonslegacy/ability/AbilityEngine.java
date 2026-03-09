@@ -6,6 +6,9 @@ import dev.dragonslegacy.ability.event.AbilityCooldownEndedEvent;
 import dev.dragonslegacy.ability.event.AbilityCooldownStartedEvent;
 import dev.dragonslegacy.ability.event.AbilityDeactivatedEvent;
 import dev.dragonslegacy.ability.event.AbilityExpiredEvent;
+import dev.dragonslegacy.command.MessageOutputSystem;
+import dev.dragonslegacy.config.AbilityConfig;
+import dev.dragonslegacy.config.MessagesConfig;
 import dev.dragonslegacy.egg.DragonsLegacy;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,6 +35,11 @@ public class AbilityEngine {
     private AbilityState          state   = AbilityState.INACTIVE;
     private final AbilityTimers   timers  = new AbilityTimers();
     private @Nullable UUID        activePlayerUUID;
+
+    /** Tracks the last server tick when an elytra-block message was sent, to avoid spam. */
+    private int lastElytraBlockTick = -ELYTRA_BLOCK_MESSAGE_INTERVAL;
+    /** Minimum tick interval between consecutive elytra-blocked messages (2 seconds). */
+    private static final int ELYTRA_BLOCK_MESSAGE_INTERVAL = 40;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -63,6 +71,25 @@ public class AbilityEngine {
             state = AbilityState.INACTIVE;
             DragonsLegacyMod.LOGGER.debug("[Dragon's Legacy] Dragon's Hunger cooldown finished.");
             publishEvent(new AbilityCooldownEndedEvent());
+        }
+
+        // Elytra blocking: cancel elytra flight while Dragon's Hunger is active
+        if (state == AbilityState.ACTIVE && activePlayerUUID != null) {
+            AbilityConfig cfg = DragonsLegacyMod.configManager.getAbility();
+            if (cfg.blockElytra) {
+                ServerPlayer player = server.getPlayerList().getPlayer(activePlayerUUID);
+                if (player != null && player.isFallFlying()) {
+                    player.stopFallFlying();
+                    int currentTick = server.getTickCount();
+                    if (currentTick - lastElytraBlockTick >= ELYTRA_BLOCK_MESSAGE_INTERVAL) {
+                        lastElytraBlockTick = currentTick;
+                        MessagesConfig msgs = DragonsLegacyMod.configManager.getMessages();
+                        if (msgs.elytraBlocked != null) {
+                            MessageOutputSystem.send(player, msgs.elytraBlocked);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -187,6 +214,11 @@ public class AbilityEngine {
             ServerPlayer player = server.getPlayerList().getPlayer(expiredFor);
             if (player != null) {
                 DragonHungerAbility.remove(player);
+                // Notify the bearer that the ability has expired
+                MessagesConfig msgs = DragonsLegacyMod.configManager.getMessages();
+                if (msgs.hungerExpired != null) {
+                    MessageOutputSystem.send(player, msgs.hungerExpired);
+                }
             }
         }
 
