@@ -4,19 +4,13 @@ duration_ticks: 6000
 cooldown_ticks: 1200
 block_elytra: true
 
-scaling:
-  enabled: false
-  health_multiplier: 0.0
-  damage_multiplier: 0.0
-  speed_multiplier: 0.0
-
 effects:
   - id: "strength"
-    amplifier: 1
+    level: 2
     show_particles: true
     show_icon: true
   - id: "speed"
-    amplifier: 1
+    level: 2
     show_particles: true
     show_icon: true
 

@@ -42,21 +42,21 @@ public class AbilityConfig {
 
         EffectEntry strength = new EffectEntry();
         strength.id = "minecraft:strength";
-        strength.amplifier = 1;
+        strength.level = 2;
         strength.showParticles = true;
         strength.showIcon = true;
         list.add(strength);
 
         EffectEntry speed = new EffectEntry();
         speed.id = "minecraft:speed";
-        speed.amplifier = 1;
+        speed.level = 2;
         speed.showParticles = true;
         speed.showIcon = true;
         list.add(speed);
 
         EffectEntry hunger = new EffectEntry();
         hunger.id = "minecraft:hunger";
-        hunger.amplifier = 1;
+        hunger.level = 2;
         hunger.showParticles = false;
         hunger.showIcon = false;
         list.add(hunger);

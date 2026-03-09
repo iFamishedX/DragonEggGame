@@ -7,7 +7,6 @@ import dev.dragonslegacy.Perms;
 import dev.dragonslegacy.ability.AbilityEngine;
 import dev.dragonslegacy.ability.AbilityState;
 import dev.dragonslegacy.ability.AbilityTimers;
-import dev.dragonslegacy.config.CommandsConfig;
 import dev.dragonslegacy.config.MessagesConfig;
 import dev.dragonslegacy.egg.DragonsLegacy;
 import dev.dragonslegacy.egg.EggState;
@@ -46,6 +45,7 @@ import static net.minecraft.commands.Commands.literal;
  *   <li>{@code /dragonslegacy bearer}     – Show the current egg bearer.</li>
  *   <li>{@code /dragonslegacy hunger on}  – Activate Dragon's Hunger (bearer only).</li>
  *   <li>{@code /dragonslegacy hunger off} – Deactivate Dragon's Hunger (bearer only).</li>
+ *   <li>{@code /dragonslegacy placeholders} – List all placeholder values.</li>
  * </ul>
  *
  * <h3>Admin subcommands (requires operator permission)</h3>
@@ -54,13 +54,13 @@ import static net.minecraft.commands.Commands.literal;
  *   <li>{@code /dragonslegacy setbearer <player>} – Force-assign the bearer.</li>
  *   <li>{@code /dragonslegacy clearability}       – Deactivate the ability.</li>
  *   <li>{@code /dragonslegacy resetcooldown}      – Reset the cooldown.</li>
- *   <li>{@code /dragonslegacy reload}             – Reload all configs.</li>
+ *   <li>{@code /dragonslegacy reload}             – Reload all configs (op required).</li>
  * </ul>
  *
  * <p>All user-facing output is read from {@code config/dragonslegacy/messages.yaml}
  * via {@link MessagesConfig} and rendered by {@link MessageOutputSystem}.
- * Command names and aliases are loaded from {@code config/dragonslegacy/commands.yaml}
- * via {@link CommandsConfig}.
+ * Command names, aliases, and permission settings are loaded from
+ * {@code config/dragonslegacy/global.yaml}.
  */
 public class DragonsLegacyCommands {
 
@@ -74,25 +74,24 @@ public class DragonsLegacyCommands {
      * Registers the {@code /dragonslegacy} command tree (and its {@code /dl} alias)
      * with the Fabric command dispatcher.  Must be called during mod initialisation.
      *
-     * <p>Command names and aliases are read from {@link CommandsConfig} so that server
-     * owners can rename them via {@code commands.yaml}.
+     * <p>Command names, aliases, and per-command permission settings are read from
+     * {@link dev.dragonslegacy.config.GlobalConfig} via {@code global.yaml}.
      */
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-            CommandsConfig cmds = DragonsLegacyMod.configManager.getCommands();
-            CommandsConfig.SubcommandNames sub =
-                cmds.subcommands != null ? cmds.subcommands : new CommandsConfig.SubcommandNames();
+            dev.dragonslegacy.config.GlobalConfig global = DragonsLegacyMod.configManager.getGlobal();
+            dev.dragonslegacy.config.GlobalConfig.CommandsSection cmds =
+                global.commands != null ? global.commands : new dev.dragonslegacy.config.GlobalConfig.CommandsSection();
 
-            // Resolve subcommand names (fall back to defaults if blank)
-            String rootName        = nonEmpty(cmds.rootCommand, "dragonslegacy");
-            String helpName        = nonEmpty(sub.help,         "help");
-            String bearerName      = nonEmpty(sub.bearer,       "bearer");
-            String hungerName      = nonEmpty(sub.hunger,       "hunger");
-            String onName          = nonEmpty(sub.hungerOn,     "on");
-            String offName         = nonEmpty(sub.hungerOff,    "off");
-            String reloadName      = nonEmpty(sub.reload,       "reload");
-            String testName        = nonEmpty(sub.test,         "test");
-            String placeholdersName= nonEmpty(sub.placeholders, "placeholders");
+            // Resolve root name and subcommand names (fall back to defaults if blank)
+            String rootName         = nonEmpty(cmds.root, "dragonslegacy");
+            String helpName         = "help";
+            String bearerName       = "bearer";
+            String hungerName       = "hunger";
+            String onName           = "on";
+            String offName          = "off";
+            String reloadName       = "reload";
+            String placeholdersName = "placeholders";
 
             // Validate messages.yaml on registration so misconfigurations are logged early
             MessageOutputSystem.validateAll(DragonsLegacyMod.configManager.getMessages());
@@ -102,12 +101,15 @@ public class DragonsLegacyCommands {
                 literal(rootName)
                     // ── Public subcommands ──────────────────────────────────
                     .then(literal(helpName)
+                        .requires(requirePerm(global, cmds.help))
                         .executes(DragonsLegacyCommands::help)
                     )
                     .then(literal(bearerName)
+                        .requires(requirePerm(global, cmds.bearer))
                         .executes(DragonsLegacyCommands::bearer)
                     )
                     .then(literal(hungerName)
+                        .requires(requirePerm(global, cmds.hunger))
                         .then(literal(onName)
                             .executes(DragonsLegacyCommands::hungerOn)
                         )
@@ -116,16 +118,11 @@ public class DragonsLegacyCommands {
                         )
                     )
                     .then(literal(reloadName)
-                        .requires(src -> Permissions.check(src, Perms.DRAGONSLEGACY_RELOAD, PermissionLevel.OWNERS))
+                        .requires(requirePerm(global, cmds.reload))
                         .executes(DragonsLegacyCommands::reload)
                     )
-                    .then(literal(testName)
-                        .requires(src -> Permissions.check(src, Perms.ADMIN, PermissionLevel.ADMINS))
-                        .then(argument("message_key", com.mojang.brigadier.arguments.StringArgumentType.word())
-                            .executes(DragonsLegacyCommands::testMessage)
-                        )
-                    )
                     .then(literal(placeholdersName)
+                        .requires(requirePerm(global, cmds.placeholders))
                         .executes(DragonsLegacyCommands::listPlaceholders)
                     )
                     // ── Admin subcommands ───────────────────────────────────
@@ -151,14 +148,32 @@ public class DragonsLegacyCommands {
 
             // Register aliases as Brigadier redirects
             var rootNode = dispatcher.getRoot().getChild(rootName);
-            if (rootNode != null && cmds.rootAliases != null) {
-                for (String alias : cmds.rootAliases) {
+            if (rootNode != null && cmds.aliases != null) {
+                for (String alias : cmds.aliases) {
                     if (alias != null && !alias.isBlank() && !alias.equals(rootName)) {
                         dispatcher.register(literal(alias).redirect(rootNode));
                     }
                 }
             }
         });
+    }
+
+    /**
+     * Returns a Brigadier predicate that enforces either a LuckPerms permission node
+     * or a vanilla op level, depending on the {@code permissions_api} flag in global.yaml.
+     */
+    private static java.util.function.Predicate<CommandSourceStack> requirePerm(
+            dev.dragonslegacy.config.GlobalConfig global,
+            dev.dragonslegacy.config.GlobalConfig.CommandEntry entry) {
+        if (entry == null) return src -> true;
+        if (global.permissionsApi) {
+            String node = entry.permissionNode;
+            if (node == null || node.isBlank()) return src -> true;
+            return src -> Permissions.check(src, node);
+        } else {
+            int opLevel = entry.opLevel;
+            return src -> src.hasPermission(opLevel);
+        }
     }
 
     // =========================================================================
@@ -232,7 +247,7 @@ public class DragonsLegacyCommands {
         engine.activateDragonHunger(player);
 
         // Send activation message
-        MessageOutputSystem.send(player, messages.getEntry("hunger_activate"));
+        MessageOutputSystem.send(player, messages.getEntry("ability_activated"));
         return 1;
     }
 
@@ -269,7 +284,7 @@ public class DragonsLegacyCommands {
         engine.deactivateDragonHunger(player, "command");
 
         // Send deactivation message
-        MessageOutputSystem.send(player, messages.getEntry("hunger_deactivate"));
+        MessageOutputSystem.send(player, messages.getEntry("ability_deactivated"));
         return 1;
     }
 
@@ -468,26 +483,6 @@ public class DragonsLegacyCommands {
     // =========================================================================
     // Private helpers
     // =========================================================================
-
-    // -------------------------------------------------------------------------
-    // /dragonslegacy test <message_key>
-    // -------------------------------------------------------------------------
-
-    private static int testMessage(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player;
-        try {
-            player = source.getPlayerOrException();
-        } catch (CommandSyntaxException e) {
-            source.sendFailure(Component.literal("[Dragon's Legacy] This command must be run by a player."));
-            return -1;
-        }
-        String key = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "message_key");
-        MessagesConfig messages = DragonsLegacyMod.configManager.getMessages();
-        MessagesConfig.MessageEntry entry = messages.getEntry(key);
-        MessageOutputSystem.send(player, entry);
-        return 1;
-    }
 
     // -------------------------------------------------------------------------
     // /dragonslegacy placeholders

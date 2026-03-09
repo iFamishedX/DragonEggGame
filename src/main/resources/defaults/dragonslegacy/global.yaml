@@ -1,0 +1,30 @@
+config_version: 1
+
+# If true → use LuckPerms permission nodes.
+# If false → use vanilla operator levels.
+permissions_api: true
+
+commands:
+  root: "dragonslegacy"
+  aliases:
+    - "dl"
+
+  help:
+    permission_node: "dragonslegacy.command.help"
+    op_level: 0
+
+  bearer:
+    permission_node: "dragonslegacy.command.bearer"
+    op_level: 0
+
+  hunger:
+    permission_node: "dragonslegacy.command.hunger"
+    op_level: 0
+
+  reload:
+    permission_node: "dragonslegacy.command.reload"
+    op_level: 3
+
+  placeholders:
+    permission_node: "dragonslegacy.command.placeholders"
+    op_level: 0

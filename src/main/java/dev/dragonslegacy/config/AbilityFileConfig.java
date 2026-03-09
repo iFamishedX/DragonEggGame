@@ -24,38 +24,21 @@ public class AbilityFileConfig {
     @Setting("block_elytra")
     public boolean blockElytra = true;
 
-    public ScalingSection scaling = new ScalingSection();
-
     public List<EffectEntry> effects = buildDefaultEffects();
 
     public List<AttributeEntry> attributes = buildDefaultAttributes();
-
-    /** Scaling multipliers based on server population or other metrics. */
-    @ConfigSerializable
-    public static class ScalingSection {
-        public boolean enabled = false;
-
-        @Setting("health_multiplier")
-        public double healthMultiplier = 0.0;
-
-        @Setting("damage_multiplier")
-        public double damageMultiplier = 0.0;
-
-        @Setting("speed_multiplier")
-        public double speedMultiplier = 0.0;
-    }
 
     private static List<EffectEntry> buildDefaultEffects() {
         List<EffectEntry> list = new ArrayList<>();
         EffectEntry strength = new EffectEntry();
         strength.id = "minecraft:strength";
-        strength.amplifier = 1;
+        strength.level = 2;
         strength.showParticles = true;
         strength.showIcon = true;
         list.add(strength);
         EffectEntry speed = new EffectEntry();
         speed.id = "minecraft:speed";
-        speed.amplifier = 1;
+        speed.level = 2;
         speed.showParticles = true;
         speed.showIcon = true;
         list.add(speed);

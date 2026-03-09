@@ -1,0 +1,46 @@
+config_version: 1
+
+infusion:
+  enabled: true
+
+  # Default infusion color when no material is applied.
+  default_color: "#FFFFFF"
+
+  # Materials that can be merged with the Dragon Egg in an anvil.
+  # Namespace auto-completed (minecraft: if missing).
+  materials:
+    amethyst_shard:
+      color: "#AA00FF"
+      tooltip: "Infused with Amethyst"
+
+    copper_ingot:
+      color: "#B87333"
+      tooltip: "Infused with Copper"
+
+    gold_ingot:
+      color: "#FFD700"
+      tooltip: "Infused with Gold"
+
+    iron_ingot:
+      color: "#D8D8D8"
+      tooltip: "Infused with Iron"
+
+    netherite_ingot:
+      color: "#3C2A23"
+      tooltip: "Infused with Netherite"
+
+    quartz:
+      color: "#FFFFFF"
+      tooltip: "Infused with Quartz"
+
+    redstone:
+      color: "#FF0000"
+      tooltip: "Infused with Redstone"
+
+    emerald:
+      color: "#00FF55"
+      tooltip: "Infused with Emerald"
+
+    diamond:
+      color: "#00FFFF"
+      tooltip: "Infused with Diamond"

@@ -49,12 +49,13 @@ public final class MessageOutputSystem {
 
     /**
      * Sends {@code entry}'s primary (first) channel to {@code player}.
+     * Silently ignores disabled entries.
      *
      * @param player the recipient
-     * @param entry  the message entry to send; silently ignored if {@code null}
+     * @param entry  the message entry to send; silently ignored if {@code null} or disabled
      */
     public static void send(ServerPlayer player, MessagesConfig.MessageEntry entry) {
-        if (player == null || entry == null) return;
+        if (player == null || entry == null || entry.disabled) return;
 
         String mode = entry.output != null ? entry.output.toLowerCase(Locale.ROOT).trim() : DEFAULT_OUTPUT_MODE;
         if (!VALID_MODES.contains(mode)) {
@@ -219,12 +220,11 @@ public final class MessageOutputSystem {
         if (cfg == null) return;
         String[] keys = {
             "help", "bearer_info", "bearer_none",
-            "hunger_activate", "hunger_deactivate", "hunger_expired",
+            "ability_activated", "ability_deactivated", "ability_expired",
+            "ability_cooldown_started", "ability_cooldown_ended",
             "not_bearer", "elytra_blocked",
-            "announcement_egg_picked_up", "announcement_egg_dropped", "announcement_egg_placed",
-            "announcement_bearer_changed", "announcement_bearer_cleared", "announcement_egg_teleported",
-            "announcement_ability_activated", "announcement_ability_expired",
-            "announcement_ability_cooldown_started", "announcement_ability_cooldown_ended"
+            "egg_picked_up", "egg_dropped", "egg_placed", "egg_teleported",
+            "bearer_changed", "bearer_cleared"
         };
         int warnings = 0;
         for (String key : keys) {

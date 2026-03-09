@@ -73,6 +73,9 @@ public class MessagesConfig {
      */
     @ConfigSerializable
     public static class MessageConfig {
+        /** When {@code true}, this message will not be sent regardless of conditions. */
+        public boolean disabled = false;
+
         public int order = 0;
 
         @Setting("cooldown_ticks")
@@ -98,10 +101,11 @@ public class MessagesConfig {
         public final int globalCooldownTicks;
         public final Map<String, Boolean> conditions;
         public final int order;
+        public final boolean disabled;
 
         public MessageEntry(String output, MessageString text, List<ChannelEntry> channels,
                             int cooldownTicks, int globalCooldownTicks,
-                            Map<String, Boolean> conditions, int order) {
+                            Map<String, Boolean> conditions, int order, boolean disabled) {
             this.output = output;
             this.text = text;
             this.channels = channels;
@@ -109,6 +113,7 @@ public class MessagesConfig {
             this.globalCooldownTicks = globalCooldownTicks;
             this.conditions = conditions;
             this.order = order;
+            this.disabled = disabled;
         }
     }
 
@@ -132,6 +137,7 @@ public class MessagesConfig {
     /**
      * Returns a backward-compatible {@link MessageEntry} for the given key.
      * Uses the first channel's mode and text as the primary output.
+     * Returns an empty entry (not sent) if the message is {@code disabled}.
      * Logs a warning for missing keys; never throws.
      */
     public MessageEntry getEntry(String key) {
@@ -146,6 +152,20 @@ public class MessagesConfig {
             fallback.visibility = "everyone";
             fallback.text = "";
             cfg.channels.add(fallback);
+        }
+
+        // If disabled, return an empty entry that the output system will skip.
+        if (cfg.disabled) {
+            MessageConfig empty = new MessageConfig();
+            empty.disabled = true;
+            empty.channels = new ArrayList<>();
+            ChannelEntry fallback = new ChannelEntry();
+            fallback.mode = "chat";
+            fallback.visibility = "everyone";
+            fallback.text = "";
+            empty.channels.add(fallback);
+            return new MessageEntry("chat", fallback.getResolvedText(), empty.channels,
+                0, 0, Map.of(), 0, true);
         }
 
         List<ChannelEntry> channels = cfg.channels != null ? cfg.channels : new ArrayList<>();
@@ -168,7 +188,8 @@ public class MessagesConfig {
             cfg.cooldownTicks,
             cfg.globalCooldownTicks,
             cfg.conditions != null ? cfg.conditions : Map.of(),
-            cfg.order
+            cfg.order,
+            false
         );
     }
 
@@ -260,17 +281,29 @@ public class MessagesConfig {
             List.of(channel("chat", "everyone",
                 "%dragonslegacy:global_prefix% <yellow>No one holds the Dragon Egg yet.</yellow>"))));
 
-        map.put("hunger_activate", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.TRUE),
-            List.of(channel("title", "bearer_only",
-                "<#FF4500><bold>Dragon's Hunger!</bold>"))));
+        map.put("ability_activated", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.TRUE),
+            List.of(
+                channel("title", "bearer_only", "<#FF4500><bold>Dragon's Hunger!</bold>"),
+                channel("chat", "everyone", "%dragonslegacy:global_prefix% %dragonslegacy:player% activated Dragon's Hunger.")
+            )));
 
-        map.put("hunger_deactivate", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
+        map.put("ability_deactivated", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
             List.of(channel("title", "bearer_only",
                 "<gray><italic>Dragon's Hunger fades...</italic></gray>"))));
 
-        map.put("hunger_expired", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
-            List.of(channel("title", "bearer_only",
-                "<gray><italic>Dragon's Hunger has ended.</italic></gray>"))));
+        map.put("ability_expired", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
+            List.of(
+                channel("title", "bearer_only", "<gray><italic>Dragon's Hunger has ended.</italic></gray>"),
+                channel("chat", "everyone", "%dragonslegacy:global_prefix% Dragon's Hunger expired.")
+            )));
+
+        map.put("ability_cooldown_started", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "%dragonslegacy:global_prefix% Ability cooldown started."))));
+
+        map.put("ability_cooldown_ended", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "%dragonslegacy:global_prefix% Ability ready."))));
 
         map.put("not_bearer", buildEntry(0, 20, 0, Map.<String, Boolean>of("executor_is_not_bearer", Boolean.TRUE),
             List.of(channel("actionbar", "executor_only",
@@ -280,45 +313,29 @@ public class MessagesConfig {
             List.of(channel("actionbar", "bearer_only",
                 "<red>You cannot use an elytra while Dragon's Hunger is active!</red>"))));
 
-        map.put("announcement_egg_picked_up", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_held", Boolean.TRUE),
+        map.put("egg_picked_up", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_held", Boolean.TRUE),
             List.of(channel("chat", "everyone",
                 "%dragonslegacy:global_prefix% %dragonslegacy:player% picked up the Dragon Egg."))));
 
-        map.put("announcement_egg_dropped", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_dropped", Boolean.TRUE),
+        map.put("egg_dropped", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_dropped", Boolean.TRUE),
             List.of(channel("chat", "everyone",
                 "%dragonslegacy:global_prefix% The Dragon Egg was dropped."))));
 
-        map.put("announcement_egg_placed", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_placed", Boolean.TRUE),
+        map.put("egg_placed", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_placed", Boolean.TRUE),
             List.of(channel("chat", "everyone",
                 "%dragonslegacy:global_prefix% Dragon Egg placed at %dragonslegacy:x%, %dragonslegacy:y%, %dragonslegacy:z%."))));
 
-        map.put("announcement_bearer_changed", buildEntry(0, 0, 0, Map.<String, Boolean>of("bearer_changed", Boolean.TRUE),
-            List.of(channel("chat", "everyone",
-                "%dragonslegacy:global_prefix% New bearer: %dragonslegacy:bearer%."))));
-
-        map.put("announcement_bearer_cleared", buildEntry(0, 0, 0, Map.<String, Boolean>of("bearer_changed", Boolean.TRUE),
-            List.of(channel("chat", "everyone",
-                "%dragonslegacy:global_prefix% The Dragon Egg has no bearer."))));
-
-        map.put("announcement_egg_teleported", buildEntry(0, 0, 0, Map.of(),
+        map.put("egg_teleported", buildEntry(0, 0, 0, Map.of(),
             List.of(channel("chat", "everyone",
                 "%dragonslegacy:global_prefix% Dragon Egg returned to spawn."))));
 
-        map.put("announcement_ability_activated", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.TRUE),
+        map.put("bearer_changed", buildEntry(0, 0, 0, Map.<String, Boolean>of("bearer_changed", Boolean.TRUE),
             List.of(channel("chat", "everyone",
-                "%dragonslegacy:global_prefix% %dragonslegacy:player% activated Dragon's Hunger."))));
+                "%dragonslegacy:global_prefix% New bearer: %dragonslegacy:bearer%."))));
 
-        map.put("announcement_ability_expired", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
+        map.put("bearer_cleared", buildEntry(0, 0, 0, Map.<String, Boolean>of("bearer_changed", Boolean.TRUE),
             List.of(channel("chat", "everyone",
-                "%dragonslegacy:global_prefix% Dragon's Hunger expired."))));
-
-        map.put("announcement_ability_cooldown_started", buildEntry(0, 0, 0, Map.of(),
-            List.of(channel("chat", "everyone",
-                "%dragonslegacy:global_prefix% Ability cooldown started."))));
-
-        map.put("announcement_ability_cooldown_ended", buildEntry(0, 0, 0, Map.of(),
-            List.of(channel("chat", "everyone",
-                "%dragonslegacy:global_prefix% Ability ready."))));
+                "%dragonslegacy:global_prefix% The Dragon Egg has no bearer."))));
 
         return map;
     }

@@ -1,0 +1,28 @@
+config_version: 1
+
+logging:
+  enabled: true
+
+  messages:
+    console: true
+    ops: true
+
+  config_validation:
+    console: true
+    ops: true
+
+  state_changes:
+    console: true
+    ops: true
+
+  egg_events:
+    console: true
+    ops: true
+
+  ability_events:
+    console: true
+    ops: true
+
+  errors:
+    console: true
+    ops: true

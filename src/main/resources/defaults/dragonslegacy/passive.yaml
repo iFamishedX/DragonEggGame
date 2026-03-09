@@ -2,11 +2,11 @@ config_version: 1
 
 effects:
   - id: "resistance"
-    amplifier: 0
+    level: 1
     show_particles: false
     show_icon: false
   - id: "saturation"
-    amplifier: 0
+    level: 1
     show_particles: false
     show_icon: false
 

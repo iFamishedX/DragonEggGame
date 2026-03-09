@@ -11,7 +11,6 @@ import dev.dragonslegacy.config.ConfigAttributeParser;
 import dev.dragonslegacy.config.ConfigEffectParser;
 import dev.dragonslegacy.config.ConfigManager;
 import dev.dragonslegacy.config.EffectEntry;
-import dev.dragonslegacy.config.MainConfig;
 import dev.dragonslegacy.config.PassiveEffectsConfig;
 import dev.dragonslegacy.config.SpawnConfig;
 import dev.dragonslegacy.egg.event.DragonEggEventBus;
@@ -135,9 +134,6 @@ public class DragonsLegacy {
         AbilityConfig ability = DragonsLegacyMod.configManager.getAbility();
         abilityEngine.getTimers().setConfiguredDuration(ability.durationTicks);
         abilityEngine.getTimers().setConfiguredCooldown(ability.cooldownTicks);
-
-        MainConfig main = DragonsLegacyMod.configManager.getMain();
-        eggOfflineResetManager.setOfflineThresholdDays(main.offlineResetDays);
 
         SpawnConfig spawn = DragonsLegacyMod.configManager.getSpawn();
         eggSpawnFallback.setEnabled(spawn.fallbackEnabled);

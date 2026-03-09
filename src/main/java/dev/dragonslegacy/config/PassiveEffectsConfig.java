@@ -30,21 +30,21 @@ public class PassiveEffectsConfig {
 
         EffectEntry resistance = new EffectEntry();
         resistance.id = "minecraft:resistance";
-        resistance.amplifier = 0;
+        resistance.level = 1;
         resistance.showParticles = false;
         resistance.showIcon = false;
         list.add(resistance);
 
         EffectEntry saturation = new EffectEntry();
         saturation.id = "minecraft:saturation";
-        saturation.amplifier = 0;
+        saturation.level = 1;
         saturation.showParticles = false;
         saturation.showIcon = false;
         list.add(saturation);
 
         EffectEntry glowing = new EffectEntry();
         glowing.id = "minecraft:glowing";
-        glowing.amplifier = 0;
+        glowing.level = 1;
         glowing.showParticles = false;
         glowing.showIcon = false;
         list.add(glowing);
