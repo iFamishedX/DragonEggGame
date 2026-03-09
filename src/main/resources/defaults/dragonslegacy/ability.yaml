@@ -8,6 +8,12 @@ duration_ticks: 6000
 # Default: 1200 (1 minute)
 cooldown_ticks: 1200
 
+# When true, prevents the bearer from using an elytra while Dragon's Hunger is active.
+# Any elytra flight attempt is immediately cancelled and the elytra_blocked message
+# (from messages.yaml) is sent to the bearer.
+# Default: true
+block_elytra: true
+
 # Status effects applied while Dragon's Hunger is active.
 effects:
   - id: "minecraft:strength"
@@ -34,9 +40,3 @@ attributes:
   - id: "minecraft:attack_damage"
     amount: 4.0
     operation: "add_value"
-
-# Example - add a movement speed bonus during the ability:
-# attributes:
-#   - id: "minecraft:movement_speed"
-#     amount: 0.1
-#     operation: "add_multiplied_total"

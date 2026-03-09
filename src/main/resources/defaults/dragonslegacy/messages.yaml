@@ -151,3 +151,37 @@ hunger_deactivate:
 not_bearer:
   output: "actionbar"
   text: "<red>You are not the Dragon Egg bearer!"
+
+# ----------------------------------------------------------
+# Dragon's Hunger expired
+# ----------------------------------------------------------
+# Sent directly to the bearer when Dragon's Hunger expires naturally
+# (i.e., the ability duration runs out on its own).
+# Recommended output mode: title or actionbar
+# Available placeholders: %deg:bearer%, %deg:item%
+#
+# Example:
+# hunger_expired:
+#   output: "title"
+#   text: "<gray><italic>Dragon's Hunger has ended.</italic></gray>"
+#
+hunger_expired:
+  output: "title"
+  text: "<gray><italic>Dragon's Hunger has ended.</italic></gray>"
+
+# ----------------------------------------------------------
+# Elytra blocked
+# ----------------------------------------------------------
+# Sent to the bearer when they attempt to use an elytra while
+# Dragon's Hunger is active and block_elytra is true in ability.yaml.
+# Recommended output mode: actionbar (brief, non-intrusive)
+# Available placeholders: %deg:bearer%, %deg:item%
+#
+# Example:
+# elytra_blocked:
+#   output: "actionbar"
+#   text: "<red>You cannot use an elytra while Dragon's Hunger is active!"
+#
+elytra_blocked:
+  output: "actionbar"
+  text: "<red>You cannot use an elytra while Dragon's Hunger is active!"

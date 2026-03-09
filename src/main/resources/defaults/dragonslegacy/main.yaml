@@ -19,6 +19,15 @@ offline_reset_days: 3.0
 nearby_range: 64
 
 # Controls how precise the egg's location is when reported.
+#
+# Position types:
+#   INVENTORY     — The egg is inside a block inventory (chest, barrel, etc.)
+#   ITEM          — The egg is an item entity on the ground.
+#   PLAYER        — The egg is inside a player's inventory.
+#   BLOCK         — The egg is placed as a block.
+#   FALLING_BLOCK — The egg is a falling block entity (e.g., falling from gravity).
+#   ENTITY        — The egg is inside a non-player entity's inventory (e.g., minecart chest).
+#
 # Accepted values per position type:
 #   EXACT       - exact coordinates are shown
 #   RANDOMIZED  - coordinates are randomized within search_radius
@@ -30,11 +39,3 @@ visibility:
   BLOCK: "RANDOMIZED"
   FALLING_BLOCK: "EXACT"
   ENTITY: "EXACT"
-
-# Example - override specific types only:
-# visibility:
-#   PLAYER: "HIDDEN"
-#   BLOCK: "RANDOMIZED"
-
-# Reserved for future automation hooks.
-actions: []

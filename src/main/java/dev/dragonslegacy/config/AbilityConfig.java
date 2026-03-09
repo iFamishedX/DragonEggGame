@@ -24,6 +24,15 @@ public class AbilityConfig {
     @Comment("Attribute modifiers applied while Dragon's Hunger is active.")
     public List<AttributeEntry> attributes = createDefaultAttributes();
 
+    @Comment("""
+        When true, prevents the bearer from using an elytra while Dragon's Hunger is active.
+        Any elytra flight attempt is cancelled immediately and the configured elytra_blocked
+        message from messages.yaml is shown to the bearer.
+        Default: true
+        """)
+    @Setting("block_elytra")
+    public boolean blockElytra = true;
+
     // -------------------------------------------------------------------------
     // Defaults
     // -------------------------------------------------------------------------

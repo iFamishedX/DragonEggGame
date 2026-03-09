@@ -28,12 +28,3 @@ subcommands:
 
   # Deactivates Dragon's Hunger (bearer only).
   hunger_off: "off"
-
-# Actions executed on certain egg event triggers.
-# See the wiki for full documentation: https://github.com/iFamishedX/DragonEggGame/wiki
-actions: []
-
-# Example - run a command when the bearer changes:
-# actions:
-#   - trigger: "bearer_changed"
-#     command: "say The Dragon Egg has a new bearer!"

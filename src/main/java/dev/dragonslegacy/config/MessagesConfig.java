@@ -164,6 +164,35 @@ public class MessagesConfig {
         "<red>You are not the Dragon Egg bearer!"
     );
 
+    @Setting("hunger_expired")
+    @Comment("""
+        Sent to the bearer when Dragon's Hunger expires naturally (duration runs out).
+        Output mode: title or actionbar recommended.
+        Supported placeholders: %deg:bearer%, %deg:item%.
+        # Example:
+        # hunger_expired:
+        #   output: "title"
+        #   text: "<gray><italic>Dragon's Hunger has ended.</italic></gray>"
+        """)
+    public MessageEntry hungerExpired = defaultEntry("title",
+        "<gray><italic>Dragon's Hunger has ended.</italic></gray>"
+    );
+
+    @Setting("elytra_blocked")
+    @Comment("""
+        Sent to the bearer when they try to use an elytra while Dragon's Hunger is active
+        and block_elytra is true in ability.yaml.
+        Output mode: actionbar recommended for brevity.
+        Supported placeholders: %deg:bearer%, %deg:item%.
+        # Example:
+        # elytra_blocked:
+        #   output: "actionbar"
+        #   text: "<red>You cannot use an elytra while Dragon's Hunger is active!"
+        """)
+    public MessageEntry elytraBlocked = defaultEntry("actionbar",
+        "<red>You cannot use an elytra while Dragon's Hunger is active!"
+    );
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
