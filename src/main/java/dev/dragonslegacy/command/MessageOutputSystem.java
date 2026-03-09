@@ -8,11 +8,15 @@ import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.BossEvent;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,32 +24,15 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Unified message output system for Dragon's Legacy commands.
  *
- * <p>Parses message text using the PB4 NodeParser (which supports MiniMessage and
- * Placeholder API) and dispatches the resulting {@link Component} to the target player
- * via the configured output mode.
- *
- * <h3>Supported output modes</h3>
- * <ul>
- *   <li>{@code chat}      – standard chat message via {@link ServerPlayer#sendSystemMessage}</li>
- *   <li>{@code actionbar} – above-hotbar message via {@link ClientboundSetActionBarTextPacket}</li>
- *   <li>{@code bossbar}   – temporary boss bar (auto-removed after 5 seconds)</li>
- *   <li>{@code title}     – large on-screen title via {@link ClientboundSetTitleTextPacket}</li>
- *   <li>{@code subtitle}  – small on-screen subtitle via {@link ClientboundSetSubtitleTextPacket}</li>
- * </ul>
- *
- * <h3>Validation</h3>
- * <ul>
- *   <li>Unknown output modes fall back to {@code chat} with a warning log.</li>
- *   <li>If MiniMessage / PB4 parsing fails the raw text is used instead.</li>
- *   <li>A {@code null} entry or null player is silently ignored.</li>
- * </ul>
+ * <p>Supports single-player dispatch (backward compatible) and multi-channel broadcast
+ * with visibility routing (bearer_only, everyone, everyone_except_bearer, executor_only,
+ * everyone_except_executor).
  */
 public final class MessageOutputSystem {
 
     private static final Set<String> VALID_MODES =
         Set.of("chat", "actionbar", "bossbar", "title", "subtitle");
 
-    /** Default output mode used when the configured mode is absent or invalid. */
     private static final String DEFAULT_OUTPUT_MODE = "chat";
 
     /** Bossbar duration in server ticks (5 seconds). */
@@ -56,15 +43,12 @@ public final class MessageOutputSystem {
 
     private MessageOutputSystem() {}
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // Single-player dispatch (backward compatible)
+    // =========================================================================
 
     /**
-     * Sends {@code entry} to {@code player} using the entry's configured output mode.
-     *
-     * <p>PB4 global placeholders and MiniMessage tags are resolved relative to
-     * {@code player}'s context so that player-specific placeholders work correctly.
+     * Sends {@code entry}'s primary (first) channel to {@code player}.
      *
      * @param player the recipient
      * @param entry  the message entry to send; silently ignored if {@code null}
@@ -72,60 +56,115 @@ public final class MessageOutputSystem {
     public static void send(ServerPlayer player, MessagesConfig.MessageEntry entry) {
         if (player == null || entry == null) return;
 
-        // Validate and normalise output mode
-        String mode = entry.output != null ? entry.output.toLowerCase(java.util.Locale.ROOT).trim() : DEFAULT_OUTPUT_MODE;
+        String mode = entry.output != null ? entry.output.toLowerCase(Locale.ROOT).trim() : DEFAULT_OUTPUT_MODE;
         if (!VALID_MODES.contains(mode)) {
             DragonsLegacyMod.LOGGER.warn(
                 "[Dragon's Legacy] Unknown output mode '{}' in messages config; falling back to '{}'.",
-                entry.output, DEFAULT_OUTPUT_MODE
-            );
+                entry.output, DEFAULT_OUTPUT_MODE);
             mode = DEFAULT_OUTPUT_MODE;
         }
 
-        // Resolve text → MC Component
-        Component component = resolveComponent(player, entry);
+        Component component = resolveComponent(player, entry.text);
+        dispatch(player, mode, component);
+    }
 
-        // Dispatch
+    // =========================================================================
+    // Multi-channel broadcast with visibility routing
+    // =========================================================================
+
+    /**
+     * Broadcasts a multi-channel message to all online players, applying visibility rules.
+     *
+     * <p>Visibility modes:
+     * <ul>
+     *   <li>{@code everyone}                  - sent to all online players</li>
+     *   <li>{@code bearer_only}               - sent only to the current bearer</li>
+     *   <li>{@code everyone_except_bearer}    - sent to all except the bearer</li>
+     *   <li>{@code executor_only}             - sent only to the executor</li>
+     *   <li>{@code everyone_except_executor}  - sent to all except the executor</li>
+     * </ul>
+     *
+     * @param server   the Minecraft server
+     * @param entry    the message entry to broadcast
+     * @param executor the player who triggered the action (may be {@code null})
+     * @param bearer   the current egg bearer (may be {@code null})
+     */
+    public static void broadcast(MinecraftServer server, MessagesConfig.MessageEntry entry,
+                                  @Nullable ServerPlayer executor, @Nullable ServerPlayer bearer) {
+        if (server == null || entry == null) return;
+
+        List<MessagesConfig.ChannelEntry> channels = entry.channels;
+        if (channels == null || channels.isEmpty()) {
+            if (executor != null) send(executor, entry);
+            return;
+        }
+
+        List<ServerPlayer> allPlayers = server.getPlayerList().getPlayers();
+
+        for (MessagesConfig.ChannelEntry channel : channels) {
+            String mode = normalizeMode(channel.mode);
+            String visibility = channel.visibility != null
+                ? channel.visibility.toLowerCase(Locale.ROOT).trim()
+                : "everyone";
+
+            for (ServerPlayer player : allPlayers) {
+                if (!matchesVisibility(visibility, player, executor, bearer)) continue;
+
+                Component component = resolveComponent(player, channel.getResolvedText());
+                dispatch(player, mode, component);
+            }
+        }
+    }
+
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
+
+    private static boolean matchesVisibility(String visibility, ServerPlayer player,
+                                              @Nullable ServerPlayer executor,
+                                              @Nullable ServerPlayer bearer) {
+        return switch (visibility) {
+            case "bearer_only" -> bearer != null && player.getUUID().equals(bearer.getUUID());
+            case "everyone_except_bearer" -> bearer == null || !player.getUUID().equals(bearer.getUUID());
+            case "executor_only" -> executor != null && player.getUUID().equals(executor.getUUID());
+            case "everyone_except_executor" -> executor == null || !player.getUUID().equals(executor.getUUID());
+            default -> true; // "everyone"
+        };
+    }
+
+    private static String normalizeMode(String mode) {
+        if (mode == null) return DEFAULT_OUTPUT_MODE;
+        String normalized = mode.toLowerCase(Locale.ROOT).trim();
+        if (!VALID_MODES.contains(normalized)) {
+            DragonsLegacyMod.LOGGER.warn(
+                "[Dragon's Legacy] Unknown output mode '{}'; falling back to 'chat'.", mode);
+            return DEFAULT_OUTPUT_MODE;
+        }
+        return normalized;
+    }
+
+    private static Component resolveComponent(ServerPlayer player, dev.dragonslegacy.config.MessageString ms) {
+        String rawText = (ms != null) ? ms.value : "";
+        try {
+            if (ms != null && ms.node != null) {
+                return ms.node.toText(PlaceholderContext.of(player));
+            }
+        } catch (Exception e) {
+            DragonsLegacyMod.LOGGER.warn(
+                "[Dragon's Legacy] Failed to resolve message text '{}': {}", rawText, e.getMessage());
+        }
+        return Component.literal(rawText);
+    }
+
+    private static void dispatch(ServerPlayer player, String mode, Component component) {
         switch (mode) {
             case "actionbar" -> sendActionBar(player, component);
             case "bossbar"   -> sendBossBar(player, component);
             case "title"     -> sendTitle(player, component);
             case "subtitle"  -> sendSubtitle(player, component);
-            default          -> player.sendSystemMessage(component); // "chat"
+            default          -> player.sendSystemMessage(component);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Private helpers – component resolution
-    // -------------------------------------------------------------------------
-
-    /**
-     * Resolves the entry's text into a Minecraft {@link Component}.
-     *
-     * <p>Uses the pre-built PB4 {@link eu.pb4.placeholders.api.node.TextNode} stored in
-     * the {@link dev.dragonslegacy.config.MessageString} to expand PB4 global placeholders
-     * (including {@code %deg:bearer%}, etc.) in the context of {@code player}.
-     *
-     * <p>Falls back to a plain literal if the entry has no node or if expansion throws.
-     */
-    private static Component resolveComponent(ServerPlayer player, MessagesConfig.MessageEntry entry) {
-        String rawText = (entry.text != null) ? entry.text.value : "";
-        try {
-            if (entry.text != null && entry.text.node != null) {
-                return entry.text.node.toText(PlaceholderContext.of(player));
-            }
-        } catch (Exception e) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] Failed to resolve message text '{}': {}",
-                rawText, e.getMessage()
-            );
-        }
-        return Component.literal(rawText);
-    }
-
-    // -------------------------------------------------------------------------
-    // Private helpers – output modes
-    // -------------------------------------------------------------------------
 
     private static void sendActionBar(ServerPlayer player, Component component) {
         player.connection.send(new ClientboundSetActionBarTextPacket(component));
@@ -141,13 +180,7 @@ public final class MessageOutputSystem {
         player.connection.send(new ClientboundSetSubtitleTextPacket(component));
     }
 
-    /**
-     * Shows a temporary boss bar to {@code player} that disappears after
-     * {@value #BOSSBAR_DURATION_TICKS} ticks.  Any previously active boss bar
-     * for the same player is removed first to avoid accumulation.
-     */
     private static void sendBossBar(ServerPlayer player, Component component) {
-        // Remove any existing boss bar for this player first
         ServerBossEvent existing = ACTIVE_BOSS_BARS.remove(player.getUUID());
         if (existing != null) {
             existing.removePlayer(player);
@@ -162,7 +195,6 @@ public final class MessageOutputSystem {
         bossEvent.addPlayer(player);
         ACTIVE_BOSS_BARS.put(player.getUUID(), bossEvent);
 
-        // Schedule removal
         net.minecraft.server.MinecraftServer srv = DragonsLegacyMod.server;
         if (srv != null) {
             int removeAt = srv.getTickCount() + BOSSBAR_DURATION_TICKS;
@@ -175,40 +207,13 @@ public final class MessageOutputSystem {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Validation helper (called at config load)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Validates the output mode of a single {@link MessagesConfig.MessageEntry}.
-     * Logs a warning if the mode is invalid; never throws.
-     *
-     * @param key   the config key name (used in the log message)
-     * @param entry the entry to validate
-     */
-    public static void validateEntry(String key, MessagesConfig.MessageEntry entry) {
-        if (entry == null) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] messages.yaml: entry '{}' is null.", key);
-            return;
-        }
-        if (entry.output == null || !VALID_MODES.contains(entry.output.toLowerCase(java.util.Locale.ROOT).trim())) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] messages.yaml: entry '{}' has invalid output mode '{}'. "
-                + "Allowed: {}. Falling back to '{}'.",
-                key, entry.output, VALID_MODES, DEFAULT_OUTPUT_MODE);
-        }
-        if (entry.text == null) {
-            DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] messages.yaml: entry '{}' has a null text field.", key);
-        }
-    }
+    // =========================================================================
+    // Validation
+    // =========================================================================
 
     /**
      * Validates all entries in the given {@link MessagesConfig}.
      * Logs a warning per invalid entry; never throws.
-     *
-     * @param cfg the config to validate; silently ignored if {@code null}
      */
     public static void validateAll(MessagesConfig cfg) {
         if (cfg == null) return;
@@ -221,8 +226,16 @@ public final class MessageOutputSystem {
             "announcement_ability_activated", "announcement_ability_expired",
             "announcement_ability_cooldown_started", "announcement_ability_cooldown_ended"
         };
+        int warnings = 0;
         for (String key : keys) {
-            validateEntry(key, cfg.getEntry(key));
+            MessagesConfig.MessageEntry entry = cfg.getEntry(key);
+            if (entry.text == null) {
+                DragonsLegacyMod.LOGGER.warn(
+                    "[Dragon's Legacy] messages.yaml: entry '{}' has null text.", key);
+                warnings++;
+            }
         }
+        DragonsLegacyMod.LOGGER.info(
+            "[Dragon's Legacy] Loaded {} messages ({} warnings).", keys.length, warnings);
     }
 }

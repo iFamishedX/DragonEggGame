@@ -5,21 +5,23 @@ import eu.pb4.placeholders.api.parsers.NodeParser;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.meta.Setting;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Unified messages configuration loaded from {@code config/dragonslegacy/messages.yaml}.
+ * Messages configuration loaded from {@code config/dragonslegacy/messages.yaml}.
  *
- * <p>Replaces the previous field-based MessagesConfig and AnnouncementsConfig.
- * Messages are stored in two flat maps:
- * <ul>
- *   <li>{@code output_modes} – maps message key → output mode string</li>
- *   <li>{@code text}         – maps message key → MiniMessage text</li>
- * </ul>
- * Use {@link #getEntry(String)} to obtain a {@link MessageEntry} for a given key.
+ * <p>Each message is a full entry with multi-channel routing, visibility rules,
+ * per-player cooldowns, global cooldowns, ordering, and conditions.
+ *
+ * <p>Use {@link #getEntry(String)} for backward-compatible single-channel access,
+ * or {@link #getChannels(String)} for full multi-channel dispatch.
  */
 @ConfigSerializable
 public class MessagesConfig {
@@ -33,137 +35,310 @@ public class MessagesConfig {
     private static final Set<String> VALID_MODES =
         Set.of("chat", "actionbar", "bossbar", "title", "subtitle");
 
-    // -------------------------------------------------------------------------
-    // Nested type
-    // -------------------------------------------------------------------------
+    private static final Set<String> VALID_VISIBILITY =
+        Set.of("bearer_only", "everyone", "everyone_except_bearer", "executor_only", "everyone_except_executor");
+
+    // Per-player cooldown tracking: messageKey -> playerUUID -> last-send tick
+    private final ConcurrentHashMap<String, ConcurrentHashMap<UUID, Long>> playerCooldowns =
+        new ConcurrentHashMap<>();
+
+    // Global cooldown tracking: messageKey -> last-send tick
+    private final ConcurrentHashMap<String, Long> globalCooldowns = new ConcurrentHashMap<>();
+
+    // =========================================================================
+    // Nested types
+    // =========================================================================
 
     /**
-     * A resolved message entry with an output mode and parsed text.
-     * Instances are created on-demand by {@link MessagesConfig#getEntry(String)}.
+     * A single channel within a message entry.
+     */
+    @ConfigSerializable
+    public static class ChannelEntry {
+        public String mode = "chat";
+        public String visibility = "everyone";
+        public String text = "";
+
+        private transient MessageString resolvedText;
+
+        public MessageString getResolvedText() {
+            if (resolvedText == null) {
+                resolvedText = new MessageString(PARSER, text != null ? text : "");
+            }
+            return resolvedText;
+        }
+    }
+
+    /**
+     * A full message entry loaded from messages.yaml.
+     */
+    @ConfigSerializable
+    public static class MessageConfig {
+        public int order = 0;
+
+        @Setting("cooldown_ticks")
+        public int cooldownTicks = 0;
+
+        @Setting("global_cooldown_ticks")
+        public int globalCooldownTicks = 0;
+
+        public Map<String, Boolean> conditions = new LinkedHashMap<>();
+
+        public List<ChannelEntry> channels = new ArrayList<>();
+    }
+
+    /**
+     * A resolved message entry - the primary backward-compatible type.
+     * Points to the first channel's mode and text.
      */
     public static class MessageEntry {
         public final String output;
         public final MessageString text;
+        public final List<ChannelEntry> channels;
+        public final int cooldownTicks;
+        public final int globalCooldownTicks;
+        public final Map<String, Boolean> conditions;
+        public final int order;
 
-        public MessageEntry(String output, MessageString text) {
+        public MessageEntry(String output, MessageString text, List<ChannelEntry> channels,
+                            int cooldownTicks, int globalCooldownTicks,
+                            Map<String, Boolean> conditions, int order) {
             this.output = output;
-            this.text   = text;
+            this.text = text;
+            this.channels = channels;
+            this.cooldownTicks = cooldownTicks;
+            this.globalCooldownTicks = globalCooldownTicks;
+            this.conditions = conditions;
+            this.order = order;
         }
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Config fields
-    // -------------------------------------------------------------------------
+    // =========================================================================
+
+    @Setting("config_version")
+    public int configVersion = 1;
 
     @Setting("use_minimessage")
     public boolean useMiniMessage = true;
 
-    @Setting("output_modes")
-    public Map<String, String> outputModes = buildDefaultOutputModes();
+    /** Per-message configuration map, keyed by message identifier. */
+    public Map<String, MessageConfig> messages = buildDefaultMessages();
 
-    public Map<String, MessageString> text = buildDefaultText();
-
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Public API
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     /**
-     * Returns a {@link MessageEntry} for the given key.
-     * If the output mode is missing or invalid, defaults to {@code "chat"} with a warning.
-     * If the text is missing, returns an empty string.
-     *
-     * @param key the message key (e.g. {@code "help"}, {@code "bearer_info"})
-     * @return a non-null {@link MessageEntry}
+     * Returns a backward-compatible {@link MessageEntry} for the given key.
+     * Uses the first channel's mode and text as the primary output.
+     * Logs a warning for missing keys; never throws.
      */
     public MessageEntry getEntry(String key) {
-        // Resolve output mode
-        String rawMode = (outputModes != null) ? outputModes.get(key) : null;
-        String mode = "chat";
-        if (rawMode != null) {
-            String normalized = rawMode.toLowerCase(Locale.ROOT).trim();
-            if (VALID_MODES.contains(normalized)) {
-                mode = normalized;
-            } else {
-                DragonsLegacyMod.LOGGER.warn(
-                    "[Dragon's Legacy] messages.yaml: key '{}' has unknown output mode '{}', defaulting to 'chat'.",
-                    key, rawMode);
-            }
-        }
-        // Resolve text
-        MessageString ms = (text != null) ? text.get(key) : null;
-        if (ms == null) {
+        MessageConfig cfg = (messages != null) ? messages.get(key) : null;
+        if (cfg == null) {
             DragonsLegacyMod.LOGGER.warn(
-                "[Dragon's Legacy] messages.yaml: text for key '{}' is missing, using empty string.", key);
-            ms = new MessageString(PARSER, "");
+                "[Dragon's Legacy] messages.yaml: key '{}' not found, using empty defaults.", key);
+            cfg = new MessageConfig();
+            cfg.channels = new ArrayList<>();
+            ChannelEntry fallback = new ChannelEntry();
+            fallback.mode = "chat";
+            fallback.visibility = "everyone";
+            fallback.text = "";
+            cfg.channels.add(fallback);
         }
-        return new MessageEntry(mode, ms);
+
+        List<ChannelEntry> channels = cfg.channels != null ? cfg.channels : new ArrayList<>();
+        if (channels.isEmpty()) {
+            ChannelEntry fallback = new ChannelEntry();
+            fallback.mode = "chat";
+            fallback.visibility = "everyone";
+            fallback.text = "";
+            channels = List.of(fallback);
+        }
+
+        ChannelEntry primary = channels.get(0);
+        String mode = validateMode(key, primary.mode);
+        validateVisibility(key, primary.visibility);
+
+        return new MessageEntry(
+            mode,
+            primary.getResolvedText(),
+            channels,
+            cfg.cooldownTicks,
+            cfg.globalCooldownTicks,
+            cfg.conditions != null ? cfg.conditions : Map.of(),
+            cfg.order
+        );
     }
 
-    // -------------------------------------------------------------------------
-    // Defaults
-    // -------------------------------------------------------------------------
+    /**
+     * Returns all channels for the given key, or an empty list if not found.
+     */
+    public List<ChannelEntry> getChannels(String key) {
+        MessageConfig cfg = (messages != null) ? messages.get(key) : null;
+        if (cfg == null || cfg.channels == null) return List.of();
+        return cfg.channels;
+    }
 
-    private static Map<String, String> buildDefaultOutputModes() {
-        Map<String, String> map = new LinkedHashMap<>();
-        map.put("help",                              "chat");
-        map.put("bearer_info",                       "chat");
-        map.put("bearer_none",                       "chat");
-        map.put("hunger_activate",                   "title");
-        map.put("hunger_deactivate",                 "title");
-        map.put("hunger_expired",                    "title");
-        map.put("not_bearer",                        "actionbar");
-        map.put("elytra_blocked",                    "actionbar");
-        map.put("announcement_egg_picked_up",        "chat");
-        map.put("announcement_egg_dropped",          "chat");
-        map.put("announcement_egg_placed",           "chat");
-        map.put("announcement_bearer_changed",       "chat");
-        map.put("announcement_bearer_cleared",       "chat");
-        map.put("announcement_egg_teleported",       "chat");
-        map.put("announcement_ability_activated",    "chat");
-        map.put("announcement_ability_expired",      "chat");
-        map.put("announcement_ability_cooldown_started", "chat");
-        map.put("announcement_ability_cooldown_ended",   "chat");
+    /**
+     * Checks whether the per-player cooldown for a message key has elapsed.
+     * If it has (or there is no cooldown), records the current time and returns true.
+     */
+    public boolean checkAndUpdatePlayerCooldown(String key, UUID playerUUID, long nowTick) {
+        MessageConfig cfg = (messages != null) ? messages.get(key) : null;
+        if (cfg == null || cfg.cooldownTicks <= 0) return true;
+
+        ConcurrentHashMap<UUID, Long> map =
+            playerCooldowns.computeIfAbsent(key, k -> new ConcurrentHashMap<>());
+        Long lastSent = map.get(playerUUID);
+        if (lastSent != null && (nowTick - lastSent) < cfg.cooldownTicks) return false;
+        map.put(playerUUID, nowTick);
+        return true;
+    }
+
+    /**
+     * Checks whether the global cooldown for a message key has elapsed.
+     * If it has (or there is no cooldown), records the current time and returns true.
+     */
+    public boolean checkAndUpdateGlobalCooldown(String key, long nowTick) {
+        MessageConfig cfg = (messages != null) ? messages.get(key) : null;
+        if (cfg == null || cfg.globalCooldownTicks <= 0) return true;
+
+        Long lastSent = globalCooldowns.get(key);
+        if (lastSent != null && (nowTick - lastSent) < cfg.globalCooldownTicks) return false;
+        globalCooldowns.put(key, nowTick);
+        return true;
+    }
+
+    // =========================================================================
+    // Validation helpers
+    // =========================================================================
+
+    private String validateMode(String key, String mode) {
+        if (mode == null) {
+            DragonsLegacyMod.LOGGER.warn(
+                "[Dragon's Legacy] messages.yaml: key '{}' channel has null mode, defaulting to 'chat'.", key);
+            return "chat";
+        }
+        String normalized = mode.toLowerCase(Locale.ROOT).trim();
+        if (!VALID_MODES.contains(normalized)) {
+            DragonsLegacyMod.LOGGER.warn(
+                "[Dragon's Legacy] messages.yaml: key '{}' has unknown output mode '{}', defaulting to 'chat'.",
+                key, mode);
+            return "chat";
+        }
+        return normalized;
+    }
+
+    private void validateVisibility(String key, String visibility) {
+        if (visibility == null) return;
+        String normalized = visibility.toLowerCase(Locale.ROOT).trim();
+        if (!VALID_VISIBILITY.contains(normalized)) {
+            DragonsLegacyMod.LOGGER.warn(
+                "[Dragon's Legacy] messages.yaml: key '{}' has unknown visibility '{}'. Allowed: {}.",
+                key, visibility, VALID_VISIBILITY);
+        }
+    }
+
+    // =========================================================================
+    // Default messages
+    // =========================================================================
+
+    private static Map<String, MessageConfig> buildDefaultMessages() {
+        Map<String, MessageConfig> map = new LinkedHashMap<>();
+
+        map.put("help", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "\n/dragonslegacy help\n/dragonslegacy bearer\n/dragonslegacy hunger on\n/dragonslegacy hunger off"))));
+
+        map.put("bearer_info", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "<yellow>The %dragonslegacy:egg_item% is held by <gold>%dragonslegacy:bearer%</gold>.</yellow>"))));
+
+        map.put("bearer_none", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "<yellow>No one holds the %dragonslegacy:egg_item% yet.</yellow>"))));
+
+        map.put("hunger_activate", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.TRUE),
+            List.of(channel("title", "bearer_only",
+                "<#FF4500><bold>Dragon's Hunger!</bold>"))));
+
+        map.put("hunger_deactivate", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
+            List.of(channel("title", "bearer_only",
+                "<gray><italic>Dragon's Hunger fades...</italic></gray>"))));
+
+        map.put("hunger_expired", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
+            List.of(channel("title", "bearer_only",
+                "<gray><italic>Dragon's Hunger has ended.</italic></gray>"))));
+
+        map.put("not_bearer", buildEntry(0, 20, 0, Map.<String, Boolean>of("executor_is_not_bearer", Boolean.TRUE),
+            List.of(channel("actionbar", "executor_only",
+                "<red>You are not the Dragon Egg bearer!</red>"))));
+
+        map.put("elytra_blocked", buildEntry(0, 20, 0, Map.<String, Boolean>of("ability_active", Boolean.TRUE),
+            List.of(channel("actionbar", "bearer_only",
+                "<red>You cannot use an elytra while Dragon's Hunger is active!</red>"))));
+
+        map.put("announcement_egg_picked_up", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_held", Boolean.TRUE),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> %dragonslegacy:player% picked up the egg."))));
+
+        map.put("announcement_egg_dropped", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_dropped", Boolean.TRUE),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> The egg was dropped."))));
+
+        map.put("announcement_egg_placed", buildEntry(0, 0, 0, Map.<String, Boolean>of("egg_placed", Boolean.TRUE),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> Egg placed at %dragonslegacy:x%, %dragonslegacy:y%, %dragonslegacy:z%."))));
+
+        map.put("announcement_bearer_changed", buildEntry(0, 0, 0, Map.<String, Boolean>of("bearer_changed", Boolean.TRUE),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> New bearer: %dragonslegacy:bearer%."))));
+
+        map.put("announcement_bearer_cleared", buildEntry(0, 0, 0, Map.<String, Boolean>of("bearer_changed", Boolean.TRUE),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> The egg has no bearer."))));
+
+        map.put("announcement_egg_teleported", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> Egg returned to spawn."))));
+
+        map.put("announcement_ability_activated", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.TRUE),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> %dragonslegacy:player% activated Dragon's Hunger."))));
+
+        map.put("announcement_ability_expired", buildEntry(0, 0, 0, Map.<String, Boolean>of("ability_active", Boolean.FALSE),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> Dragon's Hunger expired."))));
+
+        map.put("announcement_ability_cooldown_started", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> Ability cooldown started."))));
+
+        map.put("announcement_ability_cooldown_ended", buildEntry(0, 0, 0, Map.of(),
+            List.of(channel("chat", "everyone",
+                "<gold>[Dragon's Legacy]</gold> Ability ready."))));
+
         return map;
     }
 
-    private static Map<String, MessageString> buildDefaultText() {
-        Map<String, MessageString> map = new LinkedHashMap<>();
-        map.put("help",                new MessageString(PARSER,
-            "\n/dragonslegacy help\n/dragonslegacy bearer\n/dragonslegacy hunger on\n/dragonslegacy hunger off"));
-        map.put("bearer_info",         new MessageString(PARSER,
-            "<yellow>The %deg:item% is held by <gold>%deg:bearer%</>."));
-        map.put("bearer_none",         new MessageString(PARSER,
-            "<yellow>No one holds the %deg:item% yet.</yellow>"));
-        map.put("hunger_activate",     new MessageString(PARSER,
-            "<#FF4500><bold>Dragon's Hunger!</bold>"));
-        map.put("hunger_deactivate",   new MessageString(PARSER,
-            "<gray><italic>Dragon's Hunger fades...</italic></gray>"));
-        map.put("hunger_expired",      new MessageString(PARSER,
-            "<gray><italic>Dragon's Hunger has ended.</italic></gray>"));
-        map.put("not_bearer",          new MessageString(PARSER,
-            "<red>You are not the Dragon Egg bearer!</red>"));
-        map.put("elytra_blocked",      new MessageString(PARSER,
-            "<red>You cannot use an elytra while Dragon's Hunger is active!</red>"));
-        map.put("announcement_egg_picked_up",        new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> <player> picked up the egg."));
-        map.put("announcement_egg_dropped",          new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> The egg was dropped."));
-        map.put("announcement_egg_placed",           new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> Egg placed at <x>, <y>, <z>."));
-        map.put("announcement_bearer_changed",       new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> New bearer: <player>."));
-        map.put("announcement_bearer_cleared",       new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> The egg has no bearer."));
-        map.put("announcement_egg_teleported",       new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> Egg returned to spawn."));
-        map.put("announcement_ability_activated",    new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> <player> activated Dragon's Hunger."));
-        map.put("announcement_ability_expired",      new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> Dragon's Hunger expired."));
-        map.put("announcement_ability_cooldown_started", new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> Ability cooldown started."));
-        map.put("announcement_ability_cooldown_ended",   new MessageString(PARSER,
-            "<gold>[Dragon's Legacy]</gold> Ability ready."));
-        return map;
+    private static MessageConfig buildEntry(int order, int cooldownTicks, int globalCooldownTicks,
+                                             Map<String, Boolean> conditions, List<ChannelEntry> channels) {
+        MessageConfig cfg = new MessageConfig();
+        cfg.order = order;
+        cfg.cooldownTicks = cooldownTicks;
+        cfg.globalCooldownTicks = globalCooldownTicks;
+        cfg.conditions = new LinkedHashMap<>(conditions);
+        cfg.channels = new ArrayList<>(channels);
+        return cfg;
+    }
+
+    private static ChannelEntry channel(String mode, String visibility, String text) {
+        ChannelEntry ch = new ChannelEntry();
+        ch.mode = mode;
+        ch.visibility = visibility;
+        ch.text = text;
+        return ch;
     }
 }

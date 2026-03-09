@@ -1,52 +1,210 @@
-# Dragon's Legacy messages configuration
-
+config_version: 1
 use_minimessage: true
 
-output_modes:
-  help: "chat"
-  bearer_info: "chat"
-  bearer_none: "chat"
-  hunger_activate: "title"
-  hunger_deactivate: "title"
-  hunger_expired: "title"
-  not_bearer: "actionbar"
-  elytra_blocked: "actionbar"
-  announcement_egg_picked_up: "chat"
-  announcement_egg_dropped: "chat"
-  announcement_egg_placed: "chat"
-  announcement_bearer_changed: "chat"
-  announcement_bearer_cleared: "chat"
-  announcement_egg_teleported: "chat"
-  announcement_ability_activated: "chat"
-  announcement_ability_expired: "chat"
-  announcement_ability_cooldown_started: "chat"
-  announcement_ability_cooldown_ended: "chat"
+# Visibility modes:
+#   bearer_only
+#   everyone
+#   everyone_except_bearer
+#   executor_only
+#   everyone_except_executor
 
-text:
-  help: |
+# Output modes:
+#   chat, actionbar, title, subtitle, bossbar
 
-    /dragonslegacy help
-    /dragonslegacy bearer
-    /dragonslegacy hunger on
-    /dragonslegacy hunger off
+messages:
+  help:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions: {}
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: |
 
-  bearer_info: "<yellow>The %deg:item% is held by <gold>%deg:bearer%</>."
-  bearer_none: "<yellow>No one holds the %deg:item% yet.</yellow>"
+          /dragonslegacy help
+          /dragonslegacy bearer
+          /dragonslegacy hunger on
+          /dragonslegacy hunger off
 
-  hunger_activate: "<#FF4500><bold>Dragon's Hunger!</bold>"
-  hunger_deactivate: "<gray><italic>Dragon's Hunger fades...</italic></gray>"
-  hunger_expired: "<gray><italic>Dragon's Hunger has ended.</italic></gray>"
+  bearer_info:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions: {}
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<yellow>The %dragonslegacy:egg_item% is held by <gold>%dragonslegacy:bearer%</gold>.</yellow>"
 
-  not_bearer: "<red>You are not the Dragon Egg bearer!</red>"
-  elytra_blocked: "<red>You cannot use an elytra while Dragon's Hunger is active!</red>"
+  bearer_none:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions: {}
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<yellow>No one holds the %dragonslegacy:egg_item% yet.</yellow>"
 
-  announcement_egg_picked_up: "<gold>[Dragon's Legacy]</gold> <player> picked up the egg."
-  announcement_egg_dropped: "<gold>[Dragon's Legacy]</gold> The egg was dropped."
-  announcement_egg_placed: "<gold>[Dragon's Legacy]</gold> Egg placed at <x>, <y>, <z>."
-  announcement_bearer_changed: "<gold>[Dragon's Legacy]</gold> New bearer: <player>."
-  announcement_bearer_cleared: "<gold>[Dragon's Legacy]</gold> The egg has no bearer."
-  announcement_egg_teleported: "<gold>[Dragon's Legacy]</gold> Egg returned to spawn."
-  announcement_ability_activated: "<gold>[Dragon's Legacy]</gold> <player> activated Dragon's Hunger."
-  announcement_ability_expired: "<gold>[Dragon's Legacy]</gold> Dragon's Hunger expired."
-  announcement_ability_cooldown_started: "<gold>[Dragon's Legacy]</gold> Ability cooldown started."
-  announcement_ability_cooldown_ended: "<gold>[Dragon's Legacy]</gold> Ability ready."
+  hunger_activate:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      ability_active: true
+    channels:
+      - mode: "title"
+        visibility: "bearer_only"
+        text: "<#FF4500><bold>Dragon's Hunger!</bold>"
+
+  hunger_deactivate:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      ability_active: false
+    channels:
+      - mode: "title"
+        visibility: "bearer_only"
+        text: "<gray><italic>Dragon's Hunger fades...</italic></gray>"
+
+  hunger_expired:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      ability_active: false
+    channels:
+      - mode: "title"
+        visibility: "bearer_only"
+        text: "<gray><italic>Dragon's Hunger has ended.</italic></gray>"
+
+  not_bearer:
+    order: 0
+    cooldown_ticks: 20
+    global_cooldown_ticks: 0
+    conditions:
+      executor_is_not_bearer: true
+    channels:
+      - mode: "actionbar"
+        visibility: "executor_only"
+        text: "<red>You are not the Dragon Egg bearer!</red>"
+
+  elytra_blocked:
+    order: 0
+    cooldown_ticks: 20
+    global_cooldown_ticks: 0
+    conditions:
+      ability_active: true
+    channels:
+      - mode: "actionbar"
+        visibility: "bearer_only"
+        text: "<red>You cannot use an elytra while Dragon's Hunger is active!</red>"
+
+  announcement_egg_picked_up:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      egg_held: true
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> %dragonslegacy:player% picked up the egg."
+
+  announcement_egg_dropped:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      egg_dropped: true
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> The egg was dropped."
+
+  announcement_egg_placed:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      egg_placed: true
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> Egg placed at %dragonslegacy:x%, %dragonslegacy:y%, %dragonslegacy:z%."
+
+  announcement_bearer_changed:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      bearer_changed: true
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> New bearer: %dragonslegacy:bearer%."
+
+  announcement_bearer_cleared:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      bearer_changed: true
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> The egg has no bearer."
+
+  announcement_egg_teleported:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions: {}
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> Egg returned to spawn."
+
+  announcement_ability_activated:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      ability_active: true
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> %dragonslegacy:player% activated Dragon's Hunger."
+
+  announcement_ability_expired:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions:
+      ability_active: false
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> Dragon's Hunger expired."
+
+  announcement_ability_cooldown_started:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions: {}
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> Ability cooldown started."
+
+  announcement_ability_cooldown_ended:
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions: {}
+    channels:
+      - mode: "chat"
+        visibility: "everyone"
+        text: "<gold>[Dragon's Legacy]</gold> Ability ready."
