@@ -31,6 +31,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import static net.minecraft.commands.Commands.argument;
@@ -514,7 +515,7 @@ public class DragonsLegacyCommands {
                     ? DragonsLegacyMod.server.getPlayerList().getPlayer(bearerUUID) : null;
                 bearer = bp != null ? bp.getGameProfile().name() : bearerUUID.toString();
             }
-            eggState = tracker.getCurrentState().name().toLowerCase(java.util.Locale.ROOT);
+            eggState = tracker.getCurrentState().name().toLowerCase(Locale.ROOT);
         }
         String abilityDuration = ability != null
             ? String.valueOf(ability.getTimers().getDurationRemaining()) : "0";
