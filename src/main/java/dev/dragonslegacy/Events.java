@@ -2,6 +2,7 @@ package dev.dragonslegacy;
 
 import dev.dragonslegacy.api.DragonEggAPI;
 import dev.dragonslegacy.config.Data;
+import dev.dragonslegacy.features.Actions;
 import dev.dragonslegacy.utils.ScheduledEvent;
 import dev.dragonslegacy.utils.Utils;
 import dev.dragonslegacy.egg.DragonsLegacy;
@@ -64,7 +65,17 @@ public class Events {
             });
         });
 
-        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, lifecycledResourceManager, b) -> Commands.reload());
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, lifecycledResourceManager, b) -> {
+            DragonsLegacy legacy = DragonsLegacy.getInstance();
+            if (legacy != null) {
+                legacy.reload(server);
+            } else {
+                DragonsLegacyMod.configManager.reload();
+            }
+            Actions.register();
+            DragonEggAPI.init();
+            DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Reloaded config and data after data-pack reload.");
+        });
 
         PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, entity) -> {
             if (player.isCreative() && state.is(Blocks.DRAGON_EGG)) DragonEggAPI.clearPosition();

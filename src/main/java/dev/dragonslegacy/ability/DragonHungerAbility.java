@@ -7,19 +7,11 @@ import dev.dragonslegacy.config.ConfigAttributeParser;
 import dev.dragonslegacy.config.ConfigEffectParser;
 import dev.dragonslegacy.config.EffectEntry;
 import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
@@ -34,10 +26,8 @@ import java.util.List;
  * <h3>Effects applied (configurable)</h3>
  * See {@code config/dragonslegacy/ability.yaml} for the current list.
  *
- * <h3>Additional hardcoded behaviour</h3>
- * <ul>
- *   <li>Curse of Binding is added to / removed from the dragon head helmet.</li>
- * </ul>
+ * <p>Dragon's Hunger is activated and deactivated exclusively via the
+ * {@code /dragonslegacy hunger on} and {@code /dragonslegacy hunger off} commands.
  */
 public final class DragonHungerAbility {
 
@@ -48,8 +38,7 @@ public final class DragonHungerAbility {
     // -------------------------------------------------------------------------
 
     /**
-     * Applies all Dragon's Hunger effects (from config) to {@code player}, plus
-     * the Binding Curse on the dragon head.
+     * Applies all Dragon's Hunger effects (from config) to {@code player}.
      *
      * @param player the bearer to buff
      */
@@ -57,7 +46,6 @@ public final class DragonHungerAbility {
         AbilityConfig config = DragonsLegacyMod.configManager.getAbility();
         applyEffects(player, config.effects, config.durationTicks + 20);
         applyAttributes(player, config.attributes);
-        applyBindingCurse(player);
     }
 
     // -------------------------------------------------------------------------
@@ -65,8 +53,7 @@ public final class DragonHungerAbility {
     // -------------------------------------------------------------------------
 
     /**
-     * Removes all Dragon's Hunger effects (from config) from {@code player}, plus
-     * the Binding Curse on the dragon head.
+     * Removes all Dragon's Hunger effects (from config) from {@code player}.
      *
      * @param player the bearer to de-buff
      */
@@ -74,7 +61,6 @@ public final class DragonHungerAbility {
         AbilityConfig config = DragonsLegacyMod.configManager.getAbility();
         removeEffects(player, config.effects);
         removeAttributes(player, config.attributes);
-        removeBindingCurse(player);
         // Clamp HP in case max_health modifier was removed
         float maxHp = player.getMaxHealth();
         if (player.getHealth() > maxHp) {
@@ -118,20 +104,6 @@ public final class DragonHungerAbility {
         }
     }
 
-    private static void applyBindingCurse(ServerPlayer player) {
-        ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
-        if (!head.is(Items.DRAGON_HEAD)) return;
-
-        Holder<Enchantment> binding = getBindingCurseHolder(player);
-        if (binding == null) return;
-
-        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(
-            head.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY)
-        );
-        mutable.set(binding, 1);
-        head.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
-    }
-
     // -------------------------------------------------------------------------
     // Helpers – remove
     // -------------------------------------------------------------------------
@@ -154,36 +126,6 @@ public final class DragonHungerAbility {
             if (instance != null) {
                 instance.removeModifier(modId);
             }
-        }
-    }
-
-    private static void removeBindingCurse(ServerPlayer player) {
-        ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
-        if (head.isEmpty()) return;
-
-        Holder<Enchantment> binding = getBindingCurseHolder(player);
-        if (binding == null) return;
-
-        ItemEnchantments existing = head.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
-        if (existing.getLevel(binding) <= 0) return;
-
-        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(existing);
-        mutable.set(binding, 0);
-        head.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
-    }
-
-    // -------------------------------------------------------------------------
-    // Utility
-    // -------------------------------------------------------------------------
-
-    private static Holder<Enchantment> getBindingCurseHolder(ServerPlayer player) {
-        try {
-            return player.level()
-                .registryAccess()
-                .lookupOrThrow(Registries.ENCHANTMENT)
-                .getOrThrow(Enchantments.BINDING_CURSE);
-        } catch (Exception e) {
-            return null;
         }
     }
 }
