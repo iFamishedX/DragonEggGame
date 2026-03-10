@@ -1,0 +1,173 @@
+config_version: 1
+
+# ============================================================
+# Dragon's Legacy — Placeholder Definitions
+# ============================================================
+#
+# This file defines all EXTERNAL PlaceholderAPI placeholders exposed
+# by Dragon's Legacy under the %dragonslegacy:<name>% namespace.
+#
+# INTERNAL vs EXTERNAL
+# --------------------
+# Internal variables ({x}, {y}, {z}, {state}, {bearer}, etc.) are
+# only available *inside* this file's format strings and conditions.
+# They are NEVER registered directly with PlaceholderAPI.
+#
+# Available internal variables:
+#   {x} {y} {z}                     — egg coordinates (integers)
+#   {dimension}                      — world key, e.g. minecraft:overworld
+#   {state}                          — effective state: PLAYER, PLACED, DROPPED,
+#                                      UNKNOWN, or HIDDEN (when visibility=HIDDEN)
+#   {bearer}                         — bearer's display name (empty if none)
+#   {bearer_uuid}                    — bearer's UUID (empty if none)
+#   {executor}                       — name of the player requesting the placeholder
+#   {executor_uuid}                  — UUID of the player requesting the placeholder
+#   {last_seen}  {seconds}           — seconds since egg was last seen (stub: 0)
+#   {ability_duration}               — ability ticks remaining
+#   {ability_cooldown}               — cooldown ticks remaining
+#   {online}  {max_players}          — server player counts
+#   {world_time}  {real_time}  {tick} — time values
+#   {egg_age}                        — egg age stub
+#   {bearer_health}  {bearer_max_health} — bearer HP
+#
+# AVAILABLE FILTERS
+# -----------------
+#   upper(value)                     — UPPERCASE
+#   lower(value)                     — lowercase
+#   capitalize(value)                — First letter uppercase, rest lowercase
+#   round(value, precision)          — Round to nearest multiple of precision
+#                                      (e.g. round({x},50) → nearest 50)
+#   abs(value)                       — Absolute value
+#   format_number(value)             — Add thousands separator (e.g. 1,234)
+#   default(value, fallback)         — Return fallback if value is blank
+#   replace(value, target, replacement) — String substitution
+#   if(condition, trueValue, falseValue) — Inline conditional
+#   color(value)                     — Strip MiniMessage tags (plain text)
+#   json(v1, v2, ...)                — Build a JSON array string
+#   distance_to_player()             — Distance from executor to the egg
+#
+# CONDITIONS
+# ----------
+# Conditions are evaluated TOP-TO-BOTTOM; the FIRST matching condition wins.
+# If no condition matches, the `format` field is used as a fallback.
+#
+# Supported operators in conditions: == and !=
+#
+# Example condition:
+#   conditions:
+#     - if: "{state} == 'HIDDEN'"
+#       output: "???"
+#
+# VISIBILITY
+# ----------
+# ignore_visibility: false  (default) — apply the visibility rules from egg.yaml
+#   When the current position type maps to HIDDEN, {state} becomes "HIDDEN".
+# ignore_visibility: true             — always use exact values; {state} reflects
+#   the physical state (PLAYER, PLACED, DROPPED).
+#
+# HOW TO RELOAD
+# -------------
+#   /dragonslegacy reload   — reloads all config files including this one
+#
+# ============================================================
+
+placeholders:
+
+  # ----------------------------------------------------------
+  # xz — X and Z coordinates (respects visibility)
+  # ----------------------------------------------------------
+  xz:
+    ignore_visibility: false
+    conditions:
+      - if: "{state} == 'HIDDEN'"
+        output: "HIDDEN"
+    format: "{round({x},50)} {round({z},50)}"
+
+  # ----------------------------------------------------------
+  # xyz — X, Y, and Z coordinates (respects visibility)
+  # ----------------------------------------------------------
+  xyz:
+    ignore_visibility: false
+    conditions:
+      - if: "{state} == 'HIDDEN'"
+        output: "HIDDEN"
+    format: "{round({x},50)} {round({y},1)} {round({z},50)}"
+
+  # ----------------------------------------------------------
+  # exact-xz — Exact X and Z (bypasses visibility; for admins)
+  # ----------------------------------------------------------
+  exact-xz:
+    ignore_visibility: true
+    format: "{round({x},1)} {round({z},1)}"
+
+  # ----------------------------------------------------------
+  # exact-xyz — Exact X, Y, and Z (bypasses visibility; for admins)
+  # ----------------------------------------------------------
+  exact-xyz:
+    ignore_visibility: true
+    format: "{round({x},1)} {round({y},1)} {round({z},1)}"
+
+  # ----------------------------------------------------------
+  # pretty_location — Formatted coordinate display (respects visibility)
+  # When hidden or carried by a player: returns empty string.
+  # ----------------------------------------------------------
+  pretty_location:
+    ignore_visibility: false
+    conditions:
+      - if: "{state} == 'HIDDEN'"
+        output: ""
+      - if: "{state} == 'PLAYER'"
+        output: ""
+    format: "✦ {round({x},50)}, ✦ {round({y},1)}, ✦ {round({z},50)}"
+
+  # ----------------------------------------------------------
+  # dimension_pretty — Human-readable dimension name
+  # Strips the minecraft: namespace and capitalises.
+  # ----------------------------------------------------------
+  dimension_pretty:
+    ignore_visibility: true
+    format: "{capitalize(replace({dimension},'minecraft:',''))}"
+
+  # ----------------------------------------------------------
+  # distance — Distance from the requesting player to the egg
+  # ----------------------------------------------------------
+  distance:
+    ignore_visibility: true
+    format: "{round(distance_to_player(),1)}"
+
+  # ----------------------------------------------------------
+  # location_json — JSON array with egg coordinates
+  # Returns "HIDDEN" string when visibility is HIDDEN.
+  # ----------------------------------------------------------
+  location_json:
+    ignore_visibility: false
+    conditions:
+      - if: "{state} == 'HIDDEN'"
+        output: "\"HIDDEN\""
+    format: "{json(round({x},50), round({y},1), round({z},50), {dimension})}"
+
+  # ----------------------------------------------------------
+  # bearer — Current bearer's display name
+  # Returns "none" when no one holds the egg.
+  # ----------------------------------------------------------
+  bearer:
+    ignore_visibility: true
+    format: "{default({bearer},'none')}"
+
+  # ----------------------------------------------------------
+  # egg_state — The egg's current physical state
+  # ----------------------------------------------------------
+  egg_state:
+    ignore_visibility: false
+    format: "{lower({state})}"
+
+  # ----------------------------------------------------------
+  # Custom placeholder examples — uncomment and edit as needed
+  # ----------------------------------------------------------
+  #
+  # my_custom:
+  #   ignore_visibility: false
+  #   conditions:
+  #     - if: "{state} == 'HIDDEN'"
+  #       output: "???"
+  #   format: "Egg is at {round({x},10)},{round({z},10)}"

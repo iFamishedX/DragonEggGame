@@ -1,16 +1,17 @@
 # Configuration
 
-Dragon's Legacy uses **seven YAML configuration files**, each focused on a specific area of the mod. All files live in:
+Dragon's Legacy uses **eight YAML configuration files**, each focused on a specific area of the mod. All files live in:
 
 ```
 config/dragonslegacy/
-├── global.yaml    — Permissions API toggle, command names & aliases, per-command permission nodes
-├── egg.yaml       — Egg tracking, visibility, and protections
-├── ability.yaml   — Dragon's Hunger ability settings
-├── passive.yaml   — Passive effects while holding the egg
-├── infusion.yaml  — Infusion color and anvil material settings
-├── messages.yaml  — All player-facing text
-└── logging.yaml   — Log output categories
+├── global.yaml        — Permissions API toggle, command names & aliases, per-command permission nodes
+├── egg.yaml           — Egg tracking, visibility, and protections
+├── ability.yaml       — Dragon's Hunger ability settings
+├── passive.yaml       — Passive effects while holding the egg
+├── infusion.yaml      — Infusion color and anvil material settings
+├── messages.yaml      — All player-facing text
+├── logging.yaml       — Log output categories
+└── placeholders.yaml  — Config-driven PlaceholderAPI placeholder definitions
 ```
 
 After editing any file, run `/dl reload` to apply changes without restarting the server. Fields marked **[Restart]** require a full server restart to take effect.
@@ -359,3 +360,31 @@ logging:
 | `errors` | Runtime errors and exceptions |
 
 Set `logging.enabled: false` to silence all Dragon's Legacy log output.
+
+---
+
+## placeholders.yaml
+
+Defines all config-driven `%dragonslegacy:*%` placeholders accessible via PlaceholderAPI. See the [Placeholder System](Placeholders.md) page for full documentation.
+
+```yaml
+config_version: 1
+
+placeholders:
+  xz:
+    ignore_visibility: false
+    conditions:
+      - if: "{state} == 'HIDDEN'"
+        output: "HIDDEN"
+    format: "{round({x},50)} {round({z},50)}"
+
+  exact-xyz:
+    ignore_visibility: true
+    format: "{round({x},1)} {round({y},1)} {round({z},1)}"
+```
+
+Key points:
+- `ignore_visibility: true` → always use exact values.
+- `conditions` list is evaluated top-to-bottom; first match wins.
+- `format` is used when no condition matches.
+- Run `/dl reload` to pick up changes.

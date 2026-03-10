@@ -92,6 +92,7 @@ public class DragonsLegacyCommands {
             String offName          = "off";
             String reloadName       = "reload";
             String placeholdersName = "placeholders";
+            String debugName        = "debug";
 
             // Validate messages.yaml on registration so misconfigurations are logged early
             MessageOutputSystem.validateAll(DragonsLegacyMod.configManager.getMessages());
@@ -126,6 +127,10 @@ public class DragonsLegacyCommands {
                         .executes(DragonsLegacyCommands::listPlaceholders)
                     )
                     // ── Admin subcommands ───────────────────────────────────
+                    .then(literal(debugName)
+                        .requires(requirePerm(global, cmds.debug))
+                        .executes(DragonsLegacyCommands::debug)
+                    )
                     .then(literal("info")
                         .requires(Permissions.require(Perms.DRAGONSLEGACY_INFO, PermissionLevel.OWNERS))
                         .executes(DragonsLegacyCommands::info)
@@ -154,6 +159,33 @@ public class DragonsLegacyCommands {
                         dispatcher.register(literal(alias).redirect(rootNode));
                     }
                 }
+            }
+
+            // Register debug action-bar tick updater
+            registerDebugTicker();
+        });
+    }
+
+    // =========================================================================
+    // Debug tick registration
+    // =========================================================================
+
+    private static volatile boolean debugTickerRegistered = false;
+
+    /**
+     * Registers the debug action-bar ticker once.  The ticker fires every
+     * {@link DebugManager#ACTIONBAR_INTERVAL_TICKS} ticks and sends an action-bar
+     * update to every player who has debug mode active.
+     */
+    private static synchronized void registerDebugTicker() {
+        if (debugTickerRegistered) return;
+        debugTickerRegistered = true;
+
+        dev.dragonslegacy.Events.TICK_ACTIONS.put("debug_actionbar", (ticks, server) -> {
+            if (ticks % DebugManager.ACTIONBAR_INTERVAL_TICKS != 0) return;
+            for (net.minecraft.server.level.ServerPlayer p : server.getPlayerList().getPlayers()) {
+                if (!DebugManager.isDebugEnabled(p.getUUID())) continue;
+                sendDebugActionBar(p);
             }
         });
     }
@@ -501,6 +533,7 @@ public class DragonsLegacyCommands {
         legacy.reload(source.getServer());
         dev.dragonslegacy.features.Actions.register();
         dev.dragonslegacy.api.DragonEggAPI.init();
+        dev.dragonslegacy.Placeholders.registerDynamic();
         source.sendSuccess(
             () -> Component.literal("[Dragon's Legacy] Configuration reloaded successfully."),
             true
@@ -569,10 +602,99 @@ public class DragonsLegacyCommands {
     // Private helpers
     // =========================================================================
 
+    // -------------------------------------------------------------------------
+    // /dragonslegacy debug
+    // -------------------------------------------------------------------------
+
     /**
-     * Returns {@code value} if it is non-null and non-blank, otherwise returns
-     * {@code fallback}.
+     * Toggles debug mode for the executing player.
+     *
+     * <p>When debug mode is ON:
+     * <ul>
+     *   <li>Visibility rules are bypassed for all placeholder lookups by that player.</li>
+     *   <li>An action-bar message is sent every {@link DebugManager#ACTIONBAR_INTERVAL_TICKS}
+     *       ticks showing exact coordinates.</li>
+     * </ul>
+     *
+     * <p>Debug mode is automatically cleared on player disconnect.
      */
+    private static int debug(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        boolean nowOn = DebugManager.toggle(player.getUUID());
+
+        if (nowOn) {
+            DragonsLegacyMod.LOGGER.info(
+                "[Dragon's Legacy] Debug mode ENABLED for {}", player.getGameProfile().name());
+            player.sendSystemMessage(
+                Component.literal("[Dragon's Legacy] Debug mode ")
+                    .append(Component.literal("ENABLED").withStyle(ChatFormatting.GREEN))
+                    .append(Component.literal(". Action-bar will update every "
+                        + DebugManager.ACTIONBAR_INTERVAL_TICKS + " ticks."))
+            );
+            sendDebugActionBar(player);
+        } else {
+            DragonsLegacyMod.LOGGER.info(
+                "[Dragon's Legacy] Debug mode DISABLED for {}", player.getGameProfile().name());
+            player.sendSystemMessage(
+                Component.literal("[Dragon's Legacy] Debug mode ")
+                    .append(Component.literal("DISABLED").withStyle(ChatFormatting.RED))
+                    .append(Component.literal("."))
+            );
+        }
+        return 1;
+    }
+
+    /**
+     * Sends the debug action-bar to the given player using the {@code debug_actionbar}
+     * entry from messages.yaml, or a built-in fallback if the entry is absent.
+     */
+    private static void sendDebugActionBar(ServerPlayer player) {
+        dev.dragonslegacy.config.MessagesConfig messages =
+            DragonsLegacyMod.configManager.getMessages();
+
+        // Try to use the messages.yaml entry first
+        dev.dragonslegacy.config.MessagesConfig.MessageConfig cfg =
+            messages.messages != null ? messages.messages.get("debug_actionbar") : null;
+
+        if (cfg != null && cfg.channels != null && !cfg.channels.isEmpty()) {
+            dev.dragonslegacy.config.MessagesConfig.MessageEntry entry = messages.getEntry("debug_actionbar");
+            if (!entry.disabled) {
+                MessageOutputSystem.send(player, entry);
+                return;
+            }
+        }
+
+        // Fallback: build the debug bar directly using PlaceholderEngine
+        dev.dragonslegacy.config.PlaceholdersConfig placeholdersCfg =
+            DragonsLegacyMod.configManager.getPlaceholders();
+        dev.dragonslegacy.PlaceholderEngine.EvalContext ctx =
+            new dev.dragonslegacy.PlaceholderEngine.EvalContext(player, DragonsLegacyMod.server, true);
+
+        String bearer = resolveVar(placeholdersCfg, "bearer", ctx, "?");
+        String xyzStr = resolveVar(placeholdersCfg, "exact-xyz", ctx, "? ? ?");
+        String stateDef = resolveVar(placeholdersCfg, "egg_state", ctx, "?");
+
+        String text = "§e[Debug] §7Bearer: §f" + bearer
+            + " §7| State: §f" + stateDef
+            + " §7| XYZ: §f" + xyzStr;
+
+        MessageOutputSystem.sendActionBarRaw(player, Component.literal(text));
+    }
+
+    /**
+     * Resolves a single config-driven placeholder by name using the given context.
+     * Returns {@code fallback} when the placeholder is not defined.
+     */
+    private static String resolveVar(
+            dev.dragonslegacy.config.PlaceholdersConfig cfg,
+            String key,
+            dev.dragonslegacy.PlaceholderEngine.EvalContext ctx,
+            String fallback) {
+        if (cfg == null || cfg.placeholders == null) return fallback;
+        dev.dragonslegacy.config.PlaceholdersConfig.PlaceholderDef def = cfg.placeholders.get(key);
+        return def != null ? dev.dragonslegacy.PlaceholderEngine.resolve(def, ctx) : fallback;
+    }
+
     private static String nonEmpty(String value, String fallback) {
         return (value != null && !value.isBlank()) ? value : fallback;
     }

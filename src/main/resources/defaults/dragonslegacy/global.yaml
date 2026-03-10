@@ -28,3 +28,9 @@ commands:
   placeholders:
     permission_node: "dragonslegacy.command.placeholders"
     op_level: 0
+
+  # Admin-only: toggles real-time debug HUD (action-bar) for the executor.
+  # Shows exact egg coordinates, bearer, and state regardless of visibility config.
+  debug:
+    permission_node: "dragonslegacy.admin.debug"
+    op_level: 3

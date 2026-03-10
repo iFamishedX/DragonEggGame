@@ -212,3 +212,18 @@ messages:
       - mode: chat
         visibility: everyone
         text: "%dragonslegacy:global_prefix% The Dragon Egg has no bearer."
+
+  # ── Debug action-bar (shown every 5 ticks while debug mode is active) ──────
+  # Requires the executor to have debug mode enabled via /dragonslegacy debug.
+  # Uses placeholders from placeholders.yaml (visibility is bypassed).
+  debug_actionbar:
+    disabled: false
+    order: 0
+    cooldown_ticks: 0
+    global_cooldown_ticks: 0
+    conditions: {}
+    channels:
+      - mode: actionbar
+        visibility: executor_only
+        text: "%dragonslegacy:global_prefix% <yellow>Debug</yellow> <gray>|</gray> Bearer: <gold>%dragonslegacy:bearer%</gold> <gray>|</gray> State: <aqua>%dragonslegacy:egg_state%</aqua> <gray>|</gray> XYZ: <white>%dragonslegacy:exact-xyz%</white>"
+

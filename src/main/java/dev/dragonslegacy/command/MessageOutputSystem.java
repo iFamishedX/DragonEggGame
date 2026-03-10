@@ -171,6 +171,17 @@ public final class MessageOutputSystem {
         player.connection.send(new ClientboundSetActionBarTextPacket(component));
     }
 
+    /**
+     * Sends a raw {@link Component} as an action-bar message.
+     * Exposed for internal use (e.g. debug command fallback).
+     *
+     * @param player    the recipient
+     * @param component pre-built component to send
+     */
+    public static void sendActionBarRaw(ServerPlayer player, Component component) {
+        sendActionBar(player, component);
+    }
+
     private static void sendTitle(ServerPlayer player, Component component) {
         player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 70, 20));
         player.connection.send(new ClientboundSetTitleTextPacket(component));

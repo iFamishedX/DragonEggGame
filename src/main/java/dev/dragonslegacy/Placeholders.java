@@ -1,13 +1,12 @@
 package dev.dragonslegacy;
 
-import dev.dragonslegacy.ability.AbilityEngine;
 import dev.dragonslegacy.ability.AbilityTimers;
 import dev.dragonslegacy.api.APIUtils;
 import dev.dragonslegacy.api.DragonEggAPI;
 import dev.dragonslegacy.config.Data;
+import dev.dragonslegacy.config.PlaceholdersConfig;
 import dev.dragonslegacy.config.VisibilityType;
 import dev.dragonslegacy.egg.DragonsLegacy;
-import dev.dragonslegacy.egg.EggTracker;
 import eu.pb4.placeholders.api.PlaceholderHandler;
 import eu.pb4.placeholders.api.PlaceholderResult;
 import me.lucko.fabric.api.permissions.v0.Permissions;
@@ -22,16 +21,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
 
 public class Placeholders {
 
     // =========================================================================
-    // %dragonslegacy:*% placeholders
+    // Hardcoded %dragonslegacy:*% placeholders (backward-compat)
     // =========================================================================
 
     private static final Map<Identifier, PlaceholderHandler> ALL_PLACEHOLDERS = new HashMap<>();
+
+    /** Tracks which config-driven placeholder keys have already been registered. */
+    private static final Set<String> REGISTERED_DYNAMIC_KEYS = new HashSet<>();
 
     static {
         // Player who triggered the action / executor
@@ -103,11 +106,9 @@ public class Placeholders {
         ALL_PLACEHOLDERS.put(dlIdentifier("last_seen"), (ctx, arg) -> {
             Data data = DragonEggAPI.getData();
             if (data == null) return PlaceholderResult.value("never");
-            // Stub: returns "0" until last-seen tracking is implemented in a future update.
             return PlaceholderResult.value("0");
         });
 
-        // Stub: alias for last_seen in seconds format – will return a real value once tracking is implemented.
         ALL_PLACEHOLDERS.put(dlIdentifier("seconds"), (ctx, arg) ->
             PlaceholderResult.value("0"));
 
@@ -201,7 +202,51 @@ public class Placeholders {
         return degIdentifier(path);
     }
 
+    /** Registers all hardcoded placeholders. */
     public static void register() {
         PLACEHOLDERS.forEach(eu.pb4.placeholders.api.Placeholders::register);
+    }
+
+    /**
+     * Registers all config-driven placeholders from {@code placeholders.yaml}.
+     *
+     * <p>Safe to call multiple times (e.g. on reload): already-registered keys are
+     * skipped because PlaceholderAPI does not support re-registration, but the
+     * underlying handler already reads from the live config at evaluation time.
+     * New keys added to the YAML after the first call will be registered on the
+     * next call to this method (e.g. after a {@code /dragonslegacy reload}).
+     *
+     * <p>Must be called <em>after</em> {@link dev.dragonslegacy.config.ConfigManager#init()}.
+     */
+    public static synchronized void registerDynamic() {
+        PlaceholdersConfig cfg = DragonsLegacyMod.configManager.getPlaceholders();
+        if (cfg == null || cfg.placeholders == null || cfg.placeholders.isEmpty()) return;
+
+        for (String key : cfg.placeholders.keySet()) {
+            if (!REGISTERED_DYNAMIC_KEYS.add(key)) {
+                // Already registered — handler reads from live config, nothing to do
+                continue;
+            }
+            String capturedKey = key;
+            eu.pb4.placeholders.api.Placeholders.register(
+                dlIdentifier(capturedKey),
+                (ctx, arg) -> {
+                    PlaceholdersConfig config = DragonsLegacyMod.configManager.getPlaceholders();
+                    if (config == null || config.placeholders == null) {
+                        return PlaceholderResult.invalid("No placeholders config");
+                    }
+                    PlaceholdersConfig.PlaceholderDef def = config.placeholders.get(capturedKey);
+                    if (def == null) {
+                        return PlaceholderResult.invalid("Placeholder '" + capturedKey + "' not defined");
+                    }
+                    ServerPlayer player = ctx.player();
+                    boolean forceExact = player != null
+                        && dev.dragonslegacy.command.DebugManager.isDebugEnabled(player.getUUID());
+                    PlaceholderEngine.EvalContext evalCtx = new PlaceholderEngine.EvalContext(
+                        player, DragonsLegacyMod.server, forceExact);
+                    return PlaceholderResult.value(PlaceholderEngine.resolve(def, evalCtx));
+                }
+            );
+        }
     }
 }

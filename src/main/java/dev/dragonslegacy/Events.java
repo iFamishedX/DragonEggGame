@@ -1,6 +1,7 @@
 package dev.dragonslegacy;
 
 import dev.dragonslegacy.api.DragonEggAPI;
+import dev.dragonslegacy.command.DebugManager;
 import dev.dragonslegacy.config.Data;
 import dev.dragonslegacy.features.Actions;
 import dev.dragonslegacy.utils.ScheduledEvent;
@@ -42,8 +43,14 @@ public class Events {
             DragonsLegacy.init(server);
         });
 
-        ServerLifecycleEvents.SERVER_STOPPED.register(server ->
-            Optional.ofNullable(DragonEggAPI.getData()).ifPresent(Data::save)
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            Optional.ofNullable(DragonEggAPI.getData()).ifPresent(Data::save);
+            DebugManager.clearAll();
+        });
+
+        // Auto-disable debug mode when a player disconnects
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
+            (handler, srv) -> DebugManager.disable(handler.player.getUUID())
         );
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -74,6 +81,7 @@ public class Events {
             }
             Actions.register();
             DragonEggAPI.init();
+            dev.dragonslegacy.Placeholders.registerDynamic();
             DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] Reloaded config and data after data-pack reload.");
         });
 

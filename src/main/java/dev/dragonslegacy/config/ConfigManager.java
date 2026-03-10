@@ -32,13 +32,14 @@ import java.util.Map;
  */
 public class ConfigManager {
 
-    private GlobalConfig        globalConfig   = new GlobalConfig();
-    private EggConfig           eggConfig      = new EggConfig();
-    private AbilityFileConfig   abilityFile    = new AbilityFileConfig();
-    private PassiveConfig       passiveConfig  = new PassiveConfig();
-    private InfusionConfig      infusionConfig = new InfusionConfig();
-    private MessagesConfig      messages       = new MessagesConfig();
-    private LoggingConfig       loggingConfig  = new LoggingConfig();
+    private GlobalConfig        globalConfig        = new GlobalConfig();
+    private EggConfig           eggConfig           = new EggConfig();
+    private AbilityFileConfig   abilityFile         = new AbilityFileConfig();
+    private PassiveConfig       passiveConfig       = new PassiveConfig();
+    private InfusionConfig      infusionConfig      = new InfusionConfig();
+    private MessagesConfig      messages            = new MessagesConfig();
+    private LoggingConfig       loggingConfig       = new LoggingConfig();
+    private PlaceholdersConfig  placeholdersConfig  = new PlaceholdersConfig();
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -53,26 +54,28 @@ public class ConfigManager {
         } catch (IOException e) {
             DragonsLegacyMod.LOGGER.warn("[Dragon's Legacy] Could not create config directory.", e);
         }
-        globalConfig   = loadOrCreate("global.yaml",   GlobalConfig.class,       new GlobalConfig());
-        eggConfig      = loadOrCreate("egg.yaml",       EggConfig.class,          new EggConfig());
-        abilityFile    = loadOrCreate("ability.yaml",   AbilityFileConfig.class,  new AbilityFileConfig());
-        passiveConfig  = loadOrCreate("passive.yaml",   PassiveConfig.class,      new PassiveConfig());
-        infusionConfig = loadOrCreate("infusion.yaml",  InfusionConfig.class,     new InfusionConfig());
-        messages       = loadOrCreate("messages.yaml",  MessagesConfig.class,     new MessagesConfig());
-        loggingConfig  = loadOrCreate("logging.yaml",   LoggingConfig.class,      new LoggingConfig());
+        globalConfig        = loadOrCreate("global.yaml",       GlobalConfig.class,       new GlobalConfig());
+        eggConfig           = loadOrCreate("egg.yaml",           EggConfig.class,          new EggConfig());
+        abilityFile         = loadOrCreate("ability.yaml",       AbilityFileConfig.class,  new AbilityFileConfig());
+        passiveConfig       = loadOrCreate("passive.yaml",       PassiveConfig.class,      new PassiveConfig());
+        infusionConfig      = loadOrCreate("infusion.yaml",      InfusionConfig.class,     new InfusionConfig());
+        messages            = loadOrCreate("messages.yaml",      MessagesConfig.class,     new MessagesConfig());
+        loggingConfig       = loadOrCreate("logging.yaml",       LoggingConfig.class,      new LoggingConfig());
+        placeholdersConfig  = loadOrCreate("placeholders.yaml",  PlaceholdersConfig.class, new PlaceholdersConfig());
     }
 
     /**
      * Re-reads all YAML files from disk.
      */
     public void reload() {
-        globalConfig   = reload("global.yaml",   GlobalConfig.class,       globalConfig);
-        eggConfig      = reload("egg.yaml",       EggConfig.class,          eggConfig);
-        abilityFile    = reload("ability.yaml",   AbilityFileConfig.class,  abilityFile);
-        passiveConfig  = reload("passive.yaml",   PassiveConfig.class,      passiveConfig);
-        infusionConfig = reload("infusion.yaml",  InfusionConfig.class,     infusionConfig);
-        messages       = reload("messages.yaml",  MessagesConfig.class,     messages);
-        loggingConfig  = reload("logging.yaml",   LoggingConfig.class,      loggingConfig);
+        globalConfig        = reload("global.yaml",       GlobalConfig.class,       globalConfig);
+        eggConfig           = reload("egg.yaml",           EggConfig.class,          eggConfig);
+        abilityFile         = reload("ability.yaml",       AbilityFileConfig.class,  abilityFile);
+        passiveConfig       = reload("passive.yaml",       PassiveConfig.class,      passiveConfig);
+        infusionConfig      = reload("infusion.yaml",      InfusionConfig.class,     infusionConfig);
+        messages            = reload("messages.yaml",      MessagesConfig.class,     messages);
+        loggingConfig       = reload("logging.yaml",       LoggingConfig.class,      loggingConfig);
+        placeholdersConfig  = reload("placeholders.yaml",  PlaceholdersConfig.class, placeholdersConfig);
         DragonsLegacyMod.LOGGER.info("[Dragon's Legacy] All configuration files reloaded.");
     }
 
@@ -80,13 +83,14 @@ public class ConfigManager {
     // Primary getters (new API)
     // -------------------------------------------------------------------------
 
-    public GlobalConfig        getGlobal()         { return globalConfig; }
-    public EggConfig           getEggConfig()      { return eggConfig; }
-    public AbilityFileConfig   getAbilityFile()    { return abilityFile; }
-    public PassiveConfig       getPassiveConfig()  { return passiveConfig; }
-    public InfusionConfig      getInfusion()       { return infusionConfig; }
-    public MessagesConfig      getMessages()       { return messages; }
-    public LoggingConfig       getLogging()        { return loggingConfig; }
+    public GlobalConfig        getGlobal()             { return globalConfig; }
+    public EggConfig           getEggConfig()          { return eggConfig; }
+    public AbilityFileConfig   getAbilityFile()        { return abilityFile; }
+    public PassiveConfig       getPassiveConfig()      { return passiveConfig; }
+    public InfusionConfig      getInfusion()           { return infusionConfig; }
+    public MessagesConfig      getMessages()           { return messages; }
+    public LoggingConfig       getLogging()            { return loggingConfig; }
+    public PlaceholdersConfig  getPlaceholders()       { return placeholdersConfig; }
 
     // -------------------------------------------------------------------------
     // Adapter getters (backward-compatible with legacy code)

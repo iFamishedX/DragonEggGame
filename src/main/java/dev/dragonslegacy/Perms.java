@@ -24,6 +24,7 @@ public class Perms {
     public static final String COMMAND_HUNGER       = "dragonslegacy.command.hunger";
     public static final String COMMAND_RELOAD       = "dragonslegacy.command.reload";
     public static final String COMMAND_PLACEHOLDERS = "dragonslegacy.command.placeholders";
+    public static final String COMMAND_DEBUG        = "dragonslegacy.admin.debug";
 
     public static String child(String node, String childName) {
         return node + "." + childName;

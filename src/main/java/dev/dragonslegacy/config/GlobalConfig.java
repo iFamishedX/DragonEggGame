@@ -44,6 +44,7 @@ public class GlobalConfig {
         public CommandEntry hunger       = new CommandEntry("dragonslegacy.command.hunger",       0);
         public CommandEntry reload       = new CommandEntry("dragonslegacy.command.reload",       3);
         public CommandEntry placeholders = new CommandEntry("dragonslegacy.command.placeholders", 0);
+        public CommandEntry debug        = new CommandEntry("dragonslegacy.admin.debug",          3);
     }
 
     // =========================================================================
