@@ -170,7 +170,7 @@ public class DragonsLegacyCommands {
     // Debug tick registration
     // =========================================================================
 
-    private static volatile boolean debugTickerRegistered = false;
+    private static boolean debugTickerRegistered = false;
 
     /**
      * Registers the debug action-bar ticker once.  The ticker fires every
@@ -628,7 +628,7 @@ public class DragonsLegacyCommands {
             player.sendSystemMessage(
                 Component.literal("[Dragon's Legacy] Debug mode ")
                     .append(Component.literal("ENABLED").withStyle(ChatFormatting.GREEN))
-                    .append(Component.literal(". Action-bar will update every "
+                    .append(Component.literal(". Action-bar updates every "
                         + DebugManager.ACTIONBAR_INTERVAL_TICKS + " ticks."))
             );
             sendDebugActionBar(player);

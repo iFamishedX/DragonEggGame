@@ -593,10 +593,13 @@ public final class PlaceholderEngine {
                 current.append(c);
             }
         }
-        // Add last segment even if empty (guards against trailing comma)
+        // Add last segment only when it is non-empty or there are already other segments
+        // (guards against trailing commas producing spurious empty strings)
         String last = current.toString().trim();
-        if (!last.isEmpty() || !result.isEmpty()) {
+        if (!last.isEmpty()) {
             result.add(last);
+        } else if (!result.isEmpty()) {
+            // Trailing comma with empty tail — skip to avoid phantom argument
         }
         return result;
     }

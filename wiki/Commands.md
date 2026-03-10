@@ -110,7 +110,7 @@ Toggles debug mode ON/OFF for the executing admin.
 
 Displays full internal status: bearer, egg state, location, ability state, and remaining timers.
 
-**Permission:** `deg.admin.dragonslegacy.info` (op level 4)
+**Permission:** `deg.admin.dragonslegacy.info` *(legacy)* (op level 4)
 
 ---
 
@@ -118,7 +118,7 @@ Displays full internal status: bearer, egg state, location, ability state, and r
 
 Force-assigns a player as the new egg bearer. The egg is removed from its current location and given to the target player.
 
-**Permission:** `deg.admin.dragonslegacy.setbearer` (op level 4)
+**Permission:** `deg.admin.dragonslegacy.setbearer` *(legacy)* (op level 4)
 
 ---
 
@@ -126,7 +126,7 @@ Force-assigns a player as the new egg bearer. The egg is removed from its curren
 
 Forcefully deactivates Dragon's Hunger and resets the cooldown.
 
-**Permission:** `deg.admin.dragonslegacy.clearability` (op level 4)
+**Permission:** `deg.admin.dragonslegacy.clearability` *(legacy)* (op level 4)
 
 ---
 
@@ -134,7 +134,7 @@ Forcefully deactivates Dragon's Hunger and resets the cooldown.
 
 Resets the ability cooldown immediately.
 
-**Permission:** `deg.admin.dragonslegacy.resetcooldown` (op level 4)
+**Permission:** `deg.admin.dragonslegacy.resetcooldown` *(legacy)* (op level 4)
 
 ---
 
@@ -178,10 +178,10 @@ commands:
 | `/dl reload` | `dragonslegacy.command.reload` | 3 |
 | `/dl placeholders` | `dragonslegacy.command.placeholders` | 0 |
 | `/dl debug` | `dragonslegacy.admin.debug` | 3 |
-| `/dl info` | `deg.admin.dragonslegacy.info` | 4 |
-| `/dl setbearer` | `deg.admin.dragonslegacy.setbearer` | 4 |
-| `/dl clearability` | `deg.admin.dragonslegacy.clearability` | 4 |
-| `/dl resetcooldown` | `deg.admin.dragonslegacy.resetcooldown` | 4 |
+| `/dl info` | `deg.admin.dragonslegacy.info` *(legacy)* | 4 |
+| `/dl setbearer` | `deg.admin.dragonslegacy.setbearer` *(legacy)* | 4 |
+| `/dl clearability` | `deg.admin.dragonslegacy.clearability` *(legacy)* | 4 |
+| `/dl resetcooldown` | `deg.admin.dragonslegacy.resetcooldown` *(legacy)* | 4 |
 
 ---
 
